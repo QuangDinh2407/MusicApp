@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.INTERNET"/>
+
+
+
+    <application
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:supportsRtl="true"
+        android:theme="@style/AppThemeNoWallpaper"
+        tools:targetApi="31">
+
+        <meta-data android:name="com.facebook.sdk.ApplicationId" android:value="688473293831834"/>
+        <meta-data android:name="com.facebook.sdk.ClientToken" android:value="884cc8ba55d9e21ce6c96bcfc1bc1b12"/>
+
+        <activity
+            android:name=".Auth.LoginActivity"
+                android:exported="true"
+            android:theme="@style/AppThemeNoWallpaper">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".Auth.RegisterActivity"
+            android:exported="false"
+            android:theme="@style/AppThemeNoWallpaper" />
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="false" />
+    </application>
+
+
+</manifest>
