@@ -40,6 +40,10 @@
         <activity
             android:name=".MainActivity"
             android:exported="false" />
+
+        <activity
+            android:name=".PlayMusicActivity"
+            android:exported="false" />
     </application>
 
 

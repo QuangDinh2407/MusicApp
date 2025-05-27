@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "793718457936-geo5g8k5ur8ff1ijf908ktackir340dp.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.ck.music_app",
+            "certificate_hash": "042a0d66ffd5940b12ee0fe63e603070f03c1341"
+          }
+        },
+        {
           "client_id": "793718457936-dsanvpollknp33gs092bbc2pc39398o0.apps.googleusercontent.com",
           "client_type": 3
         }
