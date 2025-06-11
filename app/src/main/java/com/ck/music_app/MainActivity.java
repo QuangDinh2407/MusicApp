@@ -1,6 +1,7 @@
 package com.ck.music_app;
 
 import android.os.Bundle;
+import android.widget.Toast;
 
 import com.ck.music_app.MainFragment.HomeFragment;
 import com.ck.music_app.MainFragment.LibraryFragment;
@@ -24,6 +25,12 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
+
+        // Lấy email từ Intent và hiển thị Toast
+        String email = getIntent().getStringExtra("email");
+        if (email != null && !email.isEmpty()) {
+            Toast.makeText(this, "Xin chào: " + email, Toast.LENGTH_LONG).show();
+        }
 
         // Khởi tạo các fragment chỉ một lần
         fragments = new Fragment[]{

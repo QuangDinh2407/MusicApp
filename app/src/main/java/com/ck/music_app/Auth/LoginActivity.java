@@ -1,12 +1,15 @@
-    package com.ck.music_app.Auth;
+package com.ck.music_app.Auth;
 
 import static android.content.ContentValues.TAG;
 
+import android.app.Dialog;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.Toast;
 import android.widget.TextView;
 
@@ -43,8 +46,11 @@ import com.facebook.login.LoginManager;
 import com.facebook.FacebookSdk;
 import com.google.firebase.auth.FacebookAuthProvider;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
 public class LoginActivity extends AppCompatActivity {
 
@@ -58,12 +64,22 @@ public class LoginActivity extends AppCompatActivity {
     GoogleSignInClient googleSignInClient;
     private static final int RC_SIGN_IN = 9001;
 
+    private CheckBox rememberMeCheckBox;
+    private SharedPreferences sharedPreferences;
+    private static final String PREF_NAME = "LoginPrefs";
+    private static final String KEY_REMEMBER = "remember";
+    private static final String KEY_EMAIL = "email";
+    private static final String KEY_PASSWORD = "password";
+
+    private Dialog loadingDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
         init();
+        initLoadingDialog();
+        checkRememberMe();
         EdgeToEdge.enable(this);
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.login), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -78,6 +94,7 @@ public class LoginActivity extends AppCompatActivity {
         btnLogin = findViewById(R.id.loginButton);
         btnLoginGG = findViewById(R.id.googleLoginButton);
         btnLoginFB = findViewById(R.id.facebookLoginButton);
+        rememberMeCheckBox = findViewById(R.id.rememberMeCheckBox);
 
         auth = FirebaseAuth.getInstance();
         callbackManager = CallbackManager.Factory.create();
@@ -91,6 +108,8 @@ public class LoginActivity extends AppCompatActivity {
 
         // Khởi tạo Facebook SDK
         FacebookSdk.sdkInitialize(getApplicationContext());
+
+        sharedPreferences = getSharedPreferences(PREF_NAME, MODE_PRIVATE);
 
         btnLogin.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -128,12 +147,79 @@ public class LoginActivity extends AppCompatActivity {
         });
     }
 
+    private void initLoadingDialog() {
+        loadingDialog = new Dialog(this);
+        loadingDialog.setContentView(R.layout.dialog_loading);
+        loadingDialog.setCancelable(false);
+        loadingDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+    }
+
+    private void showLoading() {
+        if (loadingDialog != null && !loadingDialog.isShowing()) {
+            loadingDialog.show();
+        }
+    }
+
+    private void hideLoading() {
+        if (loadingDialog != null && loadingDialog.isShowing()) {
+            loadingDialog.dismiss();
+        }
+    }
+
+    private void checkRememberMe() {
+        boolean isRemembered = sharedPreferences.getBoolean(KEY_REMEMBER, false);
+        if (isRemembered) {
+            String savedEmail = sharedPreferences.getString(KEY_EMAIL, "");
+            String savedPassword = sharedPreferences.getString(KEY_PASSWORD, "");
+            
+            if (!savedEmail.isEmpty() && !savedPassword.isEmpty()) {
+                showLoading();
+                auth.signInWithEmailAndPassword(savedEmail, savedPassword)
+                    .addOnCompleteListener(this, task -> {
+                        hideLoading();
+                        if (task.isSuccessful()) {
+                            FirebaseUser user = auth.getCurrentUser();
+                            createUserIfNotExists(user);
+                            Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                            intent.putExtra("email", savedEmail);
+                            startActivity(intent);
+                            finish();
+                        } else {
+                            SharedPreferences.Editor editor = sharedPreferences.edit();
+                            editor.clear();
+                            editor.apply();
+                            
+                            Toast.makeText(LoginActivity.this, 
+                                "Đăng nhập tự động thất bại. Vui lòng đăng nhập lại.", 
+                                Toast.LENGTH_LONG).show();
+                        }
+                    });
+            }
+        }
+    }
+
+    private void saveLoginInfo(String email, String password, boolean remember) {
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        if (remember) {
+            editor.putBoolean(KEY_REMEMBER, true);
+            editor.putString(KEY_EMAIL, email);
+            editor.putString(KEY_PASSWORD, password);
+        } else {
+            editor.clear();
+        }
+        editor.apply();
+    }
+
     public void loginWithEmailPassword(String email, String password){
+        showLoading();
         auth.signInWithEmailAndPassword(email, password).addOnCompleteListener(LoginActivity.this, new OnCompleteListener<AuthResult>() {
             @Override
             public void onComplete(@NonNull Task<AuthResult> task) {
+                hideLoading();
                 if (task.isSuccessful()) {
-                    // Đăng nhập thành công, chuyển sang MainActivity
+                    saveLoginInfo(email, password, rememberMeCheckBox.isChecked());
+                    FirebaseUser user = auth.getCurrentUser();
+                    createUserIfNotExists(user);
                     Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                     intent.putExtra("email", email);
                     startActivity(intent);
@@ -171,12 +257,14 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void firebaseAuthWithGoogle(String idToken) {
+        showLoading();
         AuthCredential credential = GoogleAuthProvider.getCredential(idToken, null);
         auth.signInWithCredential(credential)
                 .addOnCompleteListener(this, task -> {
+                    hideLoading();
                     if (task.isSuccessful()) {
-                        // Đăng nhập thành công
                         FirebaseUser user = auth.getCurrentUser();
+                        createUserIfNotExists(user);
                         String email = user != null ? user.getEmail() : "";
                         Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                         intent.putExtra("email", email);
@@ -191,6 +279,7 @@ public class LoginActivity extends AppCompatActivity {
                                 user.linkWithCredential(credential)
                                         .addOnCompleteListener(this, linkTask -> {
                                             if (linkTask.isSuccessful()) {
+                                                createUserIfNotExists(user);
                                                 String email = user.getEmail();
                                                 Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                                                 intent.putExtra("email", email);
@@ -232,12 +321,14 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void handleFacebookAccessToken(AccessToken token) {
+        showLoading();
         AuthCredential credential = FacebookAuthProvider.getCredential(token.getToken());
         auth.signInWithCredential(credential)
                 .addOnCompleteListener(this, task -> {
+                    hideLoading();
                     if (task.isSuccessful()) {
-                        // Đăng nhập thành công
                         FirebaseUser user = auth.getCurrentUser();
+                        createUserIfNotExists(user);
                         String email = user != null ? user.getEmail() : "";
                         Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                         intent.putExtra("email", email);
@@ -252,7 +343,7 @@ public class LoginActivity extends AppCompatActivity {
                                 user.linkWithCredential(credential)
                                         .addOnCompleteListener(this, linkTask -> {
                                             if (linkTask.isSuccessful()) {
-                                                // Liên kết thành công
+                                                createUserIfNotExists(user);
                                                 String email = user.getEmail();
                                                 Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                                                 intent.putExtra("email", email);
@@ -270,5 +361,21 @@ public class LoginActivity extends AppCompatActivity {
                         }
                     }
                 });
+    }
+
+    private void createUserIfNotExists(FirebaseUser user) {
+        if (user == null) return;
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        String uid = user.getUid();
+        db.collection("users").document(uid).get().addOnSuccessListener(documentSnapshot -> {
+            if (!documentSnapshot.exists()) {
+                Map<String, Object> userMap = new HashMap<>();
+                userMap.put("DateOfBirth", "");
+                userMap.put("Email", user.getEmail() != null ? user.getEmail() : "");
+                userMap.put("Name", user.getDisplayName() != null ? user.getDisplayName() : "");
+                userMap.put("songPlaying", "");
+                db.collection("users").document(uid).set(userMap);
+            }
+        });
     }
 }
