@@ -1,6 +1,7 @@
 package com.ck.music_app;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.Toast;
 
 import com.ck.music_app.MainFragment.HomeFragment;
@@ -14,11 +15,19 @@ import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.viewpager2.widget.ViewPager2;
+import com.ck.music_app.Model.Song;
+import com.ck.music_app.utils.FirestoreUtils;
+import java.util.List;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 public class MainActivity extends AppCompatActivity {
+    private static final String TAG = "MainActivity";
     private Fragment[] fragments;
     private ViewPager2 viewPager;
     private BottomNavigationView bottomNavigationView;
+    private FirebaseFirestore db;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -31,6 +40,10 @@ public class MainActivity extends AppCompatActivity {
         if (email != null && !email.isEmpty()) {
             Toast.makeText(this, "Xin chào: " + email, Toast.LENGTH_LONG).show();
         }
+
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        // Chạy test ngay khi khởi tạo
+        testFirestoreUtils();
 
         // Khởi tạo các fragment chỉ một lần
         fragments = new Fragment[]{
@@ -74,5 +87,41 @@ public class MainActivity extends AppCompatActivity {
             }
             return true;
         });
+
     }
+
+    private void testFirestoreUtils() {
+        Log.d(TAG, "Bắt đầu test FirestoreUtils");
+
+
+        // Test lấy bài hát từ playlist
+        String playlistId = "124e5b94-4f0f-487b-98ec-663c04e96979";
+        FirestoreUtils.getSongsByPlaylistId(playlistId, new FirestoreUtils.FirestoreCallback<List<Song>>() {
+            @Override
+            public void onSuccess(List<Song> playlistSongs) {
+                StringBuilder result = new StringBuilder("=== Tất cả bài hát ===\n");
+                result.append("Playlist ID: ").append(playlistId).append("\n");
+                result.append("Số lượng: ").append(playlistSongs.size()).append("\n\n");
+
+                for (Song song : playlistSongs) {
+                    result.append("Bài hát: ").append(song.getTitle())
+                            .append(" - ").append(song.getArtistId())
+                            .append("\n");
+                }
+
+                // Log kết quả
+                Log.d(TAG, result.toString());
+                Toast.makeText(MainActivity.this,
+                        "Test hoàn tất, xem log để biết kết quả", Toast.LENGTH_LONG).show();
+            }
+
+            @Override
+            public void onError(Exception e) {
+                Log.e(TAG, "Error getting playlist songs", e);
+                Toast.makeText(MainActivity.this,
+                        "Lỗi playlist: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
 }

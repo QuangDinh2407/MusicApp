@@ -1,5 +1,5 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <style name="AppTheme" parent="Theme.MaterialComponents.NoActionBar">
+    <style name="AppTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="android:windowShowWallpaper">true</item>
         <item name="android:windowBackground">@color/SplashColor</item>
         <item name="colorPrimaryDark">@color/FlatWhite</item>
@@ -7,14 +7,16 @@
         <item name="colorAccent">@color/flatOrange</item>
         <item name="android:actionOverflowButtonStyle">@style/Widget.ActionButton.Overflow</item>
         <item name="colorControlHighlight">#66000000</item>
+        <item name="android:statusBarColor">@color/statusBarColorLight</item>
     </style>
-    <style name="AppThemeNoWallpaper" parent="Theme.MaterialComponents.NoActionBar">
+    <style name="AppThemeNoWallpaper" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="colorPrimaryDark">@color/FlatWhite</item>
         <item name="colorPrimary">@color/FlatWhite</item>
         <item name="colorAccent">@color/flatOrange</item>
         <item name="android:actionOverflowButtonStyle">@style/Widget.ActionButton.Overflow</item>
         <item name="colorControlHighlight">#66000000</item>
+        <item name="android:statusBarColor">@color/statusBarColorLight</item>
     </style>
     <style name="SplashThemeV2" parent="Theme.MaterialComponents.NoActionBar">
         <item name="android:windowBackground">@drawable/splash</item>
