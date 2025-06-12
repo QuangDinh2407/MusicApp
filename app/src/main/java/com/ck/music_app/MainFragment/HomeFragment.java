@@ -2,6 +2,7 @@ package com.ck.music_app.MainFragment;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
@@ -13,6 +14,7 @@ import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
 import com.ck.music_app.MainActivity;
@@ -35,6 +37,7 @@ import java.util.ArrayList;
  */
 public class HomeFragment extends Fragment {
 
+    private static final String TAG = "HomeFragment";
     private ListView listViewSongs;
     private ArrayList<Song> songList = new ArrayList<>();
     private SongAdapter songAdapter;
@@ -73,59 +76,122 @@ public class HomeFragment extends Fragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (getArguments() != null) {
-            mParam1 = getArguments().getString(ARG_PARAM1);
-            mParam2 = getArguments().getString(ARG_PARAM2);
+        try {
+            if (getArguments() != null) {
+                mParam1 = getArguments().getString(ARG_PARAM1);
+                mParam2 = getArguments().getString(ARG_PARAM2);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error in onCreate: " + e.getMessage(), e);
         }
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.fragment_home, container, false);
+        try {
+            View view = inflater.inflate(R.layout.fragment_home, container, false);
 
+            listViewSongs = view.findViewById(R.id.listViewSongs);
+            songAdapter = new SongAdapter();
+            listViewSongs.setAdapter(songAdapter);
+            
+            Log.d(TAG, "Starting to load songs");
+//            FirebaseFirestore db = FirebaseFirestore.getInstance();
+//            db.collection("songs")
+//                .get()
+//                .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+//                    @Override
+//                    public void onComplete(@NonNull Task<QuerySnapshot> task) {
+//                        try {
+//                            if (task.isSuccessful() && task.getResult() != null) {
+//                                songList.clear();
+//                                for (QueryDocumentSnapshot document : task.getResult()) {
+//                                    try {
+//                                        Song song = new Song();
+//                                        // Kiểm tra và xử lý từng trường dữ liệu
+//                                        song.setSongId(document.getId());
+//
+//                                        // Xử lý các trường String
+//                                        String albumId = document.getString("albumId");
+//                                        String artistId = document.getString("artistId");
+//                                        String audioUrl = document.getString("audioUrl");
+//                                        String coverUrl = document.getString("coverUrl");
+//                                        String createdAt = document.getString("createdAt");
+//                                        String genreId = document.getString("genreId");
+//                                        String title = document.getString("title");
+//
+//                                        // Xử lý các trường Long
+//                                        Long duration = document.getLong("duration");
+//                                        Long likeCount = document.getLong("likeCount");
+//                                        Long viewCount = document.getLong("viewCount");
+//
+//                                        // Gán giá trị cho song object
+//                                        song.setAlbumId(albumId != null ? albumId : "");
+//                                        song.setArtistId(artistId != null ? artistId : "");
+//                                        song.setAudioUrl(audioUrl != null ? audioUrl : "");
+//                                        song.setCoverUrl(coverUrl != null ? coverUrl : "");
+//                                        song.setCreateAt(createdAt != null ? createdAt : "");
+//                                        song.setDuration(duration != null ? duration.intValue() : 0);
+//                                        song.setGenreId(genreId != null ? genreId : "");
+//                                        song.setLikeCount(likeCount != null ? likeCount.intValue() : 0);
+//                                        song.setTitle(title != null ? title : "");
+//                                        song.setViewCount(viewCount != null ? viewCount.intValue() : 0);
+//
+//                                        songList.add(song);
+//                                        Log.d(TAG, "Added song: " + song.getTitle());
+//                                    } catch (Exception e) {
+//                                        Log.e(TAG, "Error processing song document: " + e.getMessage(), e);
+//                                        // Tiếp tục với bài hát tiếp theo nếu có lỗi
+//                                        continue;
+//                                    }
+//                                }
+//
+//                                if (songAdapter != null) {
+//                                    songAdapter.notifyDataSetChanged();
+//                                    Log.d(TAG, "Songs loaded successfully. Count: " + songList.size());
+//                                } else {
+//                                    Log.e(TAG, "SongAdapter is null");
+//                                }
+//                            } else {
+//                                String errorMessage = task.getException() != null ?
+//                                    task.getException().getMessage() : "Unknown error";
+//                                Log.e(TAG, "Error loading songs: " + errorMessage);
+//                                if (getContext() != null) {
+//                                    Toast.makeText(getContext(),
+//                                        "Lỗi khi tải danh sách bài hát: " + errorMessage,
+//                                        Toast.LENGTH_SHORT).show();
+//                                }
+//                            }
+//                        } catch (Exception e) {
+//                            Log.e(TAG, "Error in onComplete: " + e.getMessage(), e);
+//                            if (getContext() != null) {
+//                                Toast.makeText(getContext(),
+//                                    "Lỗi khi xử lý dữ liệu bài hát: " + e.getMessage(),
+//                                    Toast.LENGTH_SHORT).show();
+//                            }
+//                        }
+//                    }
+//                });
 
-        listViewSongs = view.findViewById(R.id.listViewSongs);
-        songAdapter = new SongAdapter();
-        listViewSongs.setAdapter(songAdapter);
-        System.out.println("Trước:"+ songList.size());
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
-        db.collection("songs").get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
-            @Override
-            public void onComplete(@NonNull Task<QuerySnapshot> task) {
-                if (task.isSuccessful()) {
-                    songList.clear();
-                    for (QueryDocumentSnapshot document : task.getResult()) {
-                        Song song = new Song();
-                        song.setSongId(document.getId());
-                        song.setAlbumId(document.getString("albumId"));
-                        song.setArtistId(document.getString("artistId"));
-                        song.setAudioUrl(document.getString("audioUrl"));
-                        song.setCoverUrl(document.getString("coverUrl"));
-                        song.setCreateAt(document.getString("createdAt"));
-                        song.setDuration(document.getLong("duration") != null ? document.getLong("duration").intValue() : 0);
-                        song.setGenreId(document.getString("genreId"));
-                        song.setLikeCount(document.getLong("likeCount") != null ? document.getLong("likeCount").intValue() : 0);
-                        song.setTitle(document.getString("title"));
-                        song.setViewCount(document.getLong("viewCount") != null ? document.getLong("viewCount").intValue() : 0);
-                        songList.add(song);
-                        System.out.println("hahaha+ lelele");
-                    }
-                    songAdapter.notifyDataSetChanged();
+            listViewSongs.setOnItemClickListener((parent, v, position, id) -> {
+                try {
+                    Intent intent = new Intent(getActivity(), PlayMusicActivity.class);
+                    intent.putExtra("songList", (Serializable) songList);
+                    intent.putExtra("currentIndex", position);
+                    startActivity(intent);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error starting PlayMusicActivity: " + e.getMessage(), e);
+                    Toast.makeText(getContext(), "Lỗi khi mở bài hát", Toast.LENGTH_SHORT).show();
                 }
-            }
-        });
+            });
 
-        System.out.println("Sau:"+songList.size());
-
-        listViewSongs.setOnItemClickListener((parent, v, position, id) -> {
-            Intent intent = new Intent(getActivity(), PlayMusicActivity.class);
-            intent.putExtra("songList", (Serializable) songList);
-            intent.putExtra("currentIndex", position);
-            startActivity(intent);
-        });
-
-        return view;
+            return view;
+        } catch (Exception e) {
+            Log.e(TAG, "Error in onCreateView: " + e.getMessage(), e);
+            Toast.makeText(getContext(), "Có lỗi xảy ra: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            return inflater.inflate(R.layout.fragment_home, container, false);
+        }
     }
 
     class SongAdapter extends ArrayAdapter<Song> {
@@ -135,25 +201,33 @@ public class HomeFragment extends Fragment {
 
         @Override
         public View getView(int position, View convertView, ViewGroup parent) {
-            if (convertView == null) {
-                convertView = LayoutInflater.from(getContext()).inflate(R.layout.item_song, parent, false);
+            try {
+                if (convertView == null) {
+                    convertView = LayoutInflater.from(getContext()).inflate(R.layout.item_song, parent, false);
+                }
+                Song song = getItem(position);
+                if (song == null) return convertView;
+
+                ImageView imgCover = convertView.findViewById(R.id.imgCover);
+                TextView tvTitle = convertView.findViewById(R.id.tvTitle);
+                TextView tvViewCount = convertView.findViewById(R.id.tvViewCount);
+
+                tvTitle.setText(song.getTitle());
+                tvViewCount.setText("Lượt nghe: " + song.getViewCount());
+
+                if (getContext() != null) {
+                    Glide.with(requireContext())
+                            .load(song.getCoverUrl())
+                            .placeholder(R.mipmap.ic_launcher)
+                            .error(R.mipmap.ic_launcher)
+                            .into(imgCover);
+                }
+
+                return convertView;
+            } catch (Exception e) {
+                Log.e(TAG, "Error in getView: " + e.getMessage(), e);
+                return convertView;
             }
-            Song song = getItem(position);
-
-            ImageView imgCover = convertView.findViewById(R.id.imgCover);
-            TextView tvTitle = convertView.findViewById(R.id.tvTitle);
-            TextView tvViewCount = convertView.findViewById(R.id.tvViewCount);
-
-            tvTitle.setText(song.getTitle());
-            tvViewCount.setText("Lượt nghe: " + song.getViewCount());
-
-            Glide.with(convertView.getContext())
-                    .load(song.getCoverUrl())
-                    .placeholder(R.mipmap.ic_launcher)
-                    .error(R.mipmap.ic_launcher)
-                    .into(imgCover);
-
-            return convertView;
         }
     }
 }
