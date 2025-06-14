@@ -13,9 +13,11 @@ import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.AdapterView;
 
 import com.bumptech.glide.Glide;
 import com.ck.music_app.Adapter.ArtistAlbumAdapter;
+import com.ck.music_app.AlbumSongsActivity;
 import com.ck.music_app.MainActivity;
 import com.ck.music_app.Model.Album;
 import com.ck.music_app.Model.Artist;
