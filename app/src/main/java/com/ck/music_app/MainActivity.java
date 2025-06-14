@@ -72,6 +72,7 @@ public class MainActivity extends AppCompatActivity implements MiniPlayerFragmen
         MainPagerAdapter adapter = new MainPagerAdapter(this, fragments);
         viewPager.setAdapter(adapter);
         viewPager.setCurrentItem(0, false);
+        viewPager.setOffscreenPageLimit(2); // Giới hạn số lượng fragment được giữ trong bộ nhớ
 
         bottomNavigationView = findViewById(R.id.bottom_navigation);
         miniPlayerContainer = findViewById(R.id.mini_player_container);
