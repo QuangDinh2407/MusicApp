@@ -1,10 +1,13 @@
 package com.ck.music_app;
 
 import android.animation.ObjectAnimator;
-import android.animation.ValueAnimator;
-import android.media.MediaPlayer;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.IBinder;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.SeekBar;
@@ -18,6 +21,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import com.ck.music_app.Model.Song;
+import com.ck.music_app.Services.MusicService;
 import com.ck.music_app.utils.MusicUtils;
 import com.ck.music_app.utils.GradientUtils;
 import com.bumptech.glide.request.target.CustomTarget;
@@ -37,8 +41,8 @@ public class PlayMusicActivity extends AppCompatActivity {
     private List<Song> songList = new ArrayList<>();
 
     private int currentIndex;
-    private MediaPlayer mediaPlayer;
-    private boolean isPlaying = false;
+    private MusicService musicService;
+    private boolean serviceBound = false;
     private Handler handler = new Handler();
     private ObjectAnimator vinylRotationAnimator;
     private ObjectAnimator coverRotationAnimator;
@@ -46,6 +50,22 @@ public class PlayMusicActivity extends AppCompatActivity {
     private float currentRotating = 0f;
     private boolean isVinylRotating = false;
     private boolean isCoverRotating = false;
+
+    private ServiceConnection serviceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            MusicService.MusicBinder binder = (MusicService.MusicBinder) service;
+            musicService = binder.getService();
+            serviceBound = true;
+            musicService.setList(songList, currentIndex);
+            loadSong(currentIndex);
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            serviceBound = false;
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,8 +76,11 @@ public class PlayMusicActivity extends AppCompatActivity {
 
         initViews();
         initListeners();
-        loadSong(currentIndex);
-
+        
+        // Bind to MusicService
+        Intent intent = new Intent(this, MusicService.class);
+        bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
+        startService(intent);
     }
 
     private void initViews() {
@@ -76,32 +99,39 @@ public class PlayMusicActivity extends AppCompatActivity {
 
     private void initListeners() {
         btnPlayPause.setOnClickListener(v -> {
-            if (isPlaying) {
+            if (musicService.isPlaying()) {
                 pauseMusic();
             } else {
                 playMusic();
             }
         });
-        btnBack.setOnClickListener(v -> finish());
+
+        btnBack.setOnClickListener(v -> {
+            // Chỉ finish() activity, không dừng service
+            finish();
+        });
+
         btnPrevious.setOnClickListener(v -> {
             if (currentIndex > 0) {
                 currentIndex--;
-                loadSong(currentIndex);
-                }
-            });
+                musicService.playPrevious();
+                updateUI();
+            }
+        });
 
         btnNext.setOnClickListener(v -> {
             if (currentIndex < songList.size() - 1) {
                 currentIndex++;
-                loadSong(currentIndex);
+                musicService.playNext();
+                updateUI();
             }
         });
 
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                if (fromUser && mediaPlayer != null) {
-                    mediaPlayer.seekTo(progress);
+                if (fromUser && serviceBound) {
+                    musicService.seekTo(progress);
                     tvCurrentTime.setText(MusicUtils.formatTime(progress));
                 }
             }
@@ -117,35 +147,38 @@ public class PlayMusicActivity extends AppCompatActivity {
     }
 
     private void loadSong(int index) {
-        Song song = songList.get(index);
-        tvTitle.setText(song.getTitle());
-        tvArtist.setText(song.getArtistId());
+        if (!serviceBound || musicService == null) return;
+        
+        updateUI();
+        musicService.playSong();
+    }
+
+    private void updateUI() {
+        if (!serviceBound || musicService == null) return;
+        
+        Song currentSong = musicService.getCurrentSong();
+        if (currentSong == null) return;
+
+        tvTitle.setText(currentSong.getTitle());
+        tvArtist.setText(currentSong.getArtistId());
+        
         Glide.with(this)
-                .load(song.getCoverUrl())
+                .load(currentSong.getCoverUrl())
                 .placeholder(R.mipmap.ic_launcher)
                 .circleCrop()
                 .into(imgCover);
-        // Khởi tạo lại mediaPlayer với audioUrl mới
-        if (mediaPlayer != null) {
-            mediaPlayer.release();
+
+        int duration = musicService.getDuration();
+        if (duration > 0) {
+            seekBar.setMax(duration);
+            tvTotalTime.setText(MusicUtils.formatTime(duration));
         }
-        mediaPlayer = new MediaPlayer();
-        try {
-            mediaPlayer.setDataSource(song.getAudioUrl());
-            mediaPlayer.prepareAsync();
-            mediaPlayer.setOnPreparedListener(mp -> {
-                seekBar.setMax(mediaPlayer.getDuration());
-                tvTotalTime.setText(MusicUtils.formatTime(mediaPlayer.getDuration()));
-                playMusic();
-            });
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+
         // Gradient động
         View gradientOverlay = findViewById(R.id.gradientOverlay);
         Glide.with(this)
             .asBitmap()
-            .load(song.getCoverUrl())
+            .load(currentSong.getCoverUrl())
             .into(new CustomTarget<Bitmap>() {
                 @Override
                 public void onResourceReady(Bitmap resource, Transition<? super Bitmap> transition) {
@@ -154,10 +187,17 @@ public class PlayMusicActivity extends AppCompatActivity {
                 @Override
                 public void onLoadCleared(Drawable placeholder) {}
             });
-        // Khởi tạo lại ObjectAnimator cho xoay đĩa nhạc và cover
-        if (vinylRotationAnimator != null) vinylRotationAnimator.cancel();
-        if (coverRotationAnimator != null) coverRotationAnimator.cancel();
 
+        if (musicService.isPlaying()) {
+            startVinylRotation();
+            startCoverRotation();
+            btnPlayPause.setImageResource(R.drawable.ic_pause_white_36dp);
+            handler.postDelayed(updateSeekBar, 1000);
+        } else {
+            stopVinylRotation();
+            stopCoverRotation();
+            btnPlayPause.setImageResource(R.drawable.ic_play_white_36dp);
+        }
     }
 
     private void startVinylRotation() {
@@ -194,18 +234,18 @@ public class PlayMusicActivity extends AppCompatActivity {
     }
 
     private void playMusic() {
-        mediaPlayer.start();
+        if (!serviceBound || musicService == null) return;
+        musicService.resumeSong();
         btnPlayPause.setImageResource(R.drawable.ic_pause_white_36dp);
-        isPlaying = true;
         startVinylRotation();
         startCoverRotation();
         handler.postDelayed(updateSeekBar, 1000);
     }
 
     private void pauseMusic() {
-        mediaPlayer.pause();
+        if (!serviceBound || musicService == null) return;
+        musicService.pauseSong();
         btnPlayPause.setImageResource(R.drawable.ic_play_white_36dp);
-        isPlaying = false;
         stopVinylRotation();
         stopCoverRotation();
         handler.removeCallbacks(updateSeekBar);
@@ -214,11 +254,11 @@ public class PlayMusicActivity extends AppCompatActivity {
     private Runnable updateSeekBar = new Runnable() {
         @Override
         public void run() {
-            if (mediaPlayer != null && isPlaying) {
-                int currentPosition = mediaPlayer.getCurrentPosition();
+            if (serviceBound && musicService != null && musicService.isPlaying()) {
+                int currentPosition = musicService.getCurrentPosition();
                 seekBar.setProgress(currentPosition);
                 tvCurrentTime.setText(MusicUtils.formatTime(currentPosition));
-                handler.postDelayed(this, 0);
+                handler.postDelayed(this, 1000);
             }
         }
     };
@@ -226,11 +266,11 @@ public class PlayMusicActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (mediaPlayer != null) {
-            mediaPlayer.release();
-            mediaPlayer = null;
-        }
         handler.removeCallbacks(updateSeekBar);
+        if (serviceBound) {
+            unbindService(serviceConnection);
+            serviceBound = false;
+        }
         stopVinylRotation();
         stopCoverRotation();
     }

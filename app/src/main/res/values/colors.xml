@@ -113,4 +113,10 @@
     <color name="light_gray">#FFD3D3D3</color>
     <color name="dark_gray">#FF404040</color>
     <color name="transparent">#00000000</color>
+
+    <!-- Mini Player Colors -->
+    <color name="primary">#FF6200EE</color>
+    <color name="secondary">#FF03DAC5</color>
+    <color name="mini_player_background">#1E1E1E</color>
+    <color name="mini_player_card">#2D2D2D</color>
 </resources>

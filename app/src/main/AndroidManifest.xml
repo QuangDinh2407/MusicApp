@@ -48,6 +48,8 @@
         <activity
             android:name=".AlbumSongsActivity"
             android:exported="false" />
+
+        <service android:name=".Services.MusicService" />
     </application>
 
 
