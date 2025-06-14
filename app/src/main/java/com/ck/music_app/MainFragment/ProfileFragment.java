@@ -1,14 +1,22 @@
 package com.ck.music_app.MainFragment;
 
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
-
-import androidx.fragment.app.Fragment;
-
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
+import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.fragment.app.Fragment;
+
+import com.ck.music_app.Auth.LoginActivity;
 import com.ck.music_app.R;
+import com.google.android.material.button.MaterialButton;
+import com.google.firebase.auth.FirebaseAuth;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -25,6 +33,9 @@ public class ProfileFragment extends Fragment {
     // TODO: Rename and change types of parameters
     private String mParam1;
     private String mParam2;
+
+    private FirebaseAuth auth;
+    private MaterialButton logoutButton;
 
     public ProfileFragment() {
         // Required empty public constructor
@@ -59,8 +70,45 @@ public class ProfileFragment extends Fragment {
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
-        // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_profile, container, false);
+                           Bundle savedInstanceState) {
+        View view = inflater.inflate(R.layout.fragment_profile, container, false);
+        System.out.println("HAHA");
+        System.out.printf(String.valueOf(R.layout.fragment_profile));
+        // Khởi tạo Firebase Auth
+        auth = FirebaseAuth.getInstance();
+        
+        // Khởi tạo nút đăng xuất
+        logoutButton = view.findViewById(R.id.logoutButton);
+        
+        // Thiết lập sự kiện click cho nút đăng xuất
+        logoutButton.setOnClickListener(v -> logout());
+        
+        return view;
+    }
+
+    private void logout() {
+        // Hiển thị dialog xác nhận đăng xuất
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle("Đăng xuất")
+            .setMessage("Bạn có chắc chắn muốn đăng xuất?")
+            .setPositiveButton("Đăng xuất", (dialog, which) -> {
+                // Đăng xuất khỏi Firebase
+                auth.signOut();
+                
+                // Xóa dữ liệu trong cả hai SharedPreferences
+                SharedPreferences loginSession = requireContext().getSharedPreferences("LoginSession", Context.MODE_PRIVATE);
+                SharedPreferences loginPrefs = requireContext().getSharedPreferences("LoginPrefs", Context.MODE_PRIVATE);
+                
+                loginSession.edit().clear().apply();
+                loginPrefs.edit().clear().apply();
+                
+                // Chuyển về màn hình đăng nhập
+                Intent intent = new Intent(getActivity(), LoginActivity.class);
+                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                startActivity(intent);
+                requireActivity().finish();
+            })
+            .setNegativeButton("Hủy", null)
+            .show();
     }
 }
