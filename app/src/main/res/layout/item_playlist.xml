@@ -7,7 +7,7 @@
     android:layout_marginBottom="8dp"
     app:cardCornerRadius="8dp"
     app:cardElevation="0dp"
-    app:cardBackgroundColor="@android:color/black">
+    app:cardBackgroundColor="@color/item_playlist_background">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
@@ -30,7 +30,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
-            android:textColor="@android:color/white"
+            android:textColor="@color/item_playlist_text"
             android:textSize="16sp"
             android:textStyle="bold"
             tools:text="Tên playlist"
@@ -46,7 +46,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
-            android:textColor="@android:color/darker_gray"
+            android:textColor="@color/item_playlist_subtext"
             android:textSize="14sp"
             tools:text="X bài hát"
             app:layout_constraintStart_toEndOf="@id/imgCover"

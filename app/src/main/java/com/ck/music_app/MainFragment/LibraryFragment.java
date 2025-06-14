@@ -5,6 +5,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
+import android.widget.PopupMenu;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -32,7 +33,7 @@ public class LibraryFragment extends Fragment {
     private ViewPager2 viewPager;
     private ChipGroup chipGroupTabs;
     private Chip chipPlaylists, chipArtists, chipAlbums;
-    private ImageButton btnSearch, btnAdd;
+    private ImageButton btnSearch, btnAdd, btnSort;
     private ShapeableImageView ivUserAvatar;
     private FirebaseAuth mAuth;
 
@@ -59,6 +60,7 @@ public class LibraryFragment extends Fragment {
         setupChips();
         setupButtons();
         updateUserAvatar();
+        setupHeaderActions();
         return view;
     }
 
@@ -70,7 +72,8 @@ public class LibraryFragment extends Fragment {
         chipAlbums = view.findViewById(R.id.chipAlbums);
         btnSearch = view.findViewById(R.id.btnSearch);
         btnAdd = view.findViewById(R.id.btnAdd);
-        ivUserAvatar = view.findViewById(R.id.ivUserAvatar);
+        btnSort = view.findViewById(R.id.btnSort);
+        ivUserAvatar = view.findViewById(R.id.imgAvatar);
     }
 
     private void setupViewPager() {
@@ -131,8 +134,10 @@ public class LibraryFragment extends Fragment {
             Fragment currentFragment = getChildFragmentManager()
                     .findFragmentByTag("f" + currentPosition);
 
-            if (currentPosition == 0 && currentFragment instanceof PlaylistContentFragment) {
-                ((PlaylistContentFragment) currentFragment).showAddPlaylistDialog();
+            if (currentPosition == 0) {
+                if (currentFragment instanceof PlaylistContentFragment) {
+                    ((PlaylistContentFragment) currentFragment).showAddPlaylistDialog();
+                }
             } else if (currentPosition == 2) {
                 Toast.makeText(getContext(), "Chức năng thêm Album sẽ được triển khai sau", Toast.LENGTH_SHORT).show();
             }
@@ -148,6 +153,71 @@ public class LibraryFragment extends Fragment {
                     .error(R.drawable.default_avatar)
                     .into(ivUserAvatar);
         }
+    }
+
+    private void setupHeaderActions() {
+        // Avatar click
+        ivUserAvatar.setOnClickListener(v -> {
+            // TODO: Navigate to profile
+        });
+
+        // Search click
+        btnSearch.setOnClickListener(v -> {
+            // TODO: Navigate to search
+        });
+
+        // Add button visibility based on selected tab
+        chipGroupTabs.setOnCheckedChangeListener((group, checkedId) -> {
+            if (checkedId == R.id.chipPlaylists || checkedId == R.id.chipAlbums) {
+                btnAdd.setVisibility(View.VISIBLE);
+                btnSort.setVisibility(View.GONE);
+            } else if (checkedId == R.id.chipArtists) {
+                btnAdd.setVisibility(View.GONE);
+                btnSort.setVisibility(View.VISIBLE);
+            } else {
+                btnAdd.setVisibility(View.GONE);
+                btnSort.setVisibility(View.GONE);
+            }
+        });
+
+        // Add button click
+        btnAdd.setOnClickListener(v -> {
+            int selectedChipId = chipGroupTabs.getCheckedChipId();
+            if (selectedChipId == R.id.chipPlaylists) {
+                Fragment currentFragment = getChildFragmentManager()
+                        .findFragmentByTag("f" + viewPager.getCurrentItem());
+                if (currentFragment instanceof PlaylistContentFragment) {
+                    ((PlaylistContentFragment) currentFragment).showAddPlaylistDialog();
+                }
+            } else if (selectedChipId == R.id.chipAlbums) {
+                // TODO: Add new album
+                Toast.makeText(requireContext(), "Thêm album mới", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        // Sort button click
+        btnSort.setOnClickListener(v -> {
+            PopupMenu popup = new PopupMenu(requireContext(), btnSort);
+            popup.getMenuInflater().inflate(R.menu.menu_artist_sort, popup.getMenu());
+            popup.setOnMenuItemClickListener(item -> {
+                int itemId = item.getItemId();
+                if (itemId == R.id.sort_recent) {
+                    // TODO: Sort by recent
+                    Toast.makeText(requireContext(), "Sắp xếp theo nghe gần đây", Toast.LENGTH_SHORT).show();
+                    return true;
+                } else if (itemId == R.id.sort_name) {
+                    // TODO: Sort by name
+                    Toast.makeText(requireContext(), "Sắp xếp theo tên", Toast.LENGTH_SHORT).show();
+                    return true;
+                } else if (itemId == R.id.sort_most_played) {
+                    // TODO: Sort by most played
+                    Toast.makeText(requireContext(), "Sắp xếp theo lượt nghe", Toast.LENGTH_SHORT).show();
+                    return true;
+                }
+                return false;
+            });
+            popup.show();
+        });
     }
 
     // Adapter for ViewPager2

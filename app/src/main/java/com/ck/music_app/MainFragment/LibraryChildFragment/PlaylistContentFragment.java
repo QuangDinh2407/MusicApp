@@ -18,6 +18,8 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.DocumentSnapshot;
+import android.app.ProgressDialog;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -35,6 +37,10 @@ import android.view.MenuInflater;
 import android.widget.LinearLayout;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
+import android.text.TextWatcher;
+import android.text.Editable;
+import android.widget.Button;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -50,7 +56,6 @@ public class PlaylistContentFragment extends Fragment implements PlaylistAdapter
     private PlaylistAdapter adapter;
     private List<Playlist> playlistList;
     private FirebaseFirestore db;
-    private CardView cardCreatePlaylist;
     private RecyclerView rvSuggestedPlaylists;
     private LinearLayout layoutEmptyState;
     private ChipGroup chipGroupFilter;
@@ -103,13 +108,11 @@ public class PlaylistContentFragment extends Fragment implements PlaylistAdapter
             
             // Khởi tạo views
             rvPlaylist = view.findViewById(R.id.rvPlaylist);
-            cardCreatePlaylist = view.findViewById(R.id.cardCreatePlaylist);
             rvSuggestedPlaylists = view.findViewById(R.id.rvSuggestedPlaylists);
             layoutEmptyState = view.findViewById(R.id.layoutEmptyState);
             chipGroupFilter = view.findViewById(R.id.chipGroupFilter);
             chipRecent = view.findViewById(R.id.chipRecent);
             chipAlphabetical = view.findViewById(R.id.chipAlphabetical);
-            chipCreator = view.findViewById(R.id.chipCreator);
 
             // Khởi tạo adapter
             adapter = new PlaylistAdapter(getContext(), playlistList, this);
@@ -124,11 +127,6 @@ public class PlaylistContentFragment extends Fragment implements PlaylistAdapter
             // Thiết lập RecyclerView cho gợi ý (hiện tại không có dữ liệu)
             rvSuggestedPlaylists.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
             // rvSuggestedPlaylists.setAdapter(new SuggestedPlaylistAdapter(getContext(), new ArrayList<>())); // Cần adapter riêng cho gợi ý
-
-            // Thiết lập sự kiện cho CardView "Tạo playlist"
-            cardCreatePlaylist.setOnClickListener(v -> {
-                showAddPlaylistDialog();
-            });
 
             // Set default selection
             chipRecent.setChecked(true);
@@ -217,24 +215,46 @@ public class PlaylistContentFragment extends Fragment implements PlaylistAdapter
             return;
         }
 
-        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
-        builder.setTitle("Thêm Playlist Mới");
+        // Inflate custom layout
+        View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_create_playlist, null);
+        EditText input = dialogView.findViewById(R.id.etPlaylistName);
+        TextView tvCharCount = dialogView.findViewById(R.id.tvCharCount);
 
-        final EditText input = new EditText(getContext());
-        input.setHint("Tên Playlist");
-        builder.setView(input);
+        // Update character count
+        input.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
 
-        builder.setPositiveButton("Thêm", (dialog, which) -> {
-            String playlistName = input.getText().toString().trim();
-            if (playlistName.isEmpty()) {
-                Toast.makeText(getContext(), "Tên playlist không được để trống", Toast.LENGTH_SHORT).show();
-                return;
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                tvCharCount.setText(s.length() + "/50");
             }
-            addNewPlaylist(playlistName);
-        });
-        builder.setNegativeButton("Hủy", (dialog, which) -> dialog.cancel());
 
-        builder.show();
+            @Override
+            public void afterTextChanged(Editable s) {}
+        });
+
+        AlertDialog dialog = new MaterialAlertDialogBuilder(getContext())
+            .setTitle("Tạo Playlist Mới")
+            .setView(dialogView)
+            .setPositiveButton("Tạo", null) // Set null here to prevent auto-dismiss
+            .setNegativeButton("Hủy", (dialog1, which) -> dialog1.cancel())
+            .create();
+
+        dialog.setOnShowListener(dialogInterface -> {
+            Button button = ((AlertDialog) dialogInterface).getButton(AlertDialog.BUTTON_POSITIVE);
+            button.setOnClickListener(view -> {
+                String playlistName = input.getText().toString().trim();
+                if (playlistName.isEmpty()) {
+                    input.setError("Tên playlist không được để trống");
+                    return;
+                }
+                dialog.dismiss();
+                addNewPlaylist(playlistName);
+            });
+        });
+
+        dialog.show();
     }
 
     private void addNewPlaylist(String playlistName) {
@@ -243,32 +263,88 @@ public class PlaylistContentFragment extends Fragment implements PlaylistAdapter
             Toast.makeText(getContext(), "Vui lòng đăng nhập để tạo playlist", Toast.LENGTH_SHORT).show();
             return;
         }
-        String userId = currentUser.getUid();
 
+        // Validate playlist name
+        if (playlistName.length() < 1 || playlistName.length() > 50) {
+            Toast.makeText(getContext(), "Tên playlist phải từ 1-50 ký tự", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Show loading state
+        ProgressDialog progressDialog = new ProgressDialog(getContext());
+        progressDialog.setMessage("Đang tạo playlist...");
+        progressDialog.setCancelable(false);
+        progressDialog.show();
+
+        String userId = currentUser.getUid();
         String newPlaylistId = UUID.randomUUID().toString();
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
         String createdAtString = sdf.format(new Date());
 
-        Playlist newPlaylist = new Playlist(newPlaylistId, playlistName, new ArrayList<>(), 
-            "https://photo-resize.zmp3.vndcdn.me/w240_r1x1_jpeg/cover/d/5/2/c/d52c962088f1181f087d1656b823e20e.jpg", 
-            createdAtString);
+        // Use a default cover URL
+        String defaultCoverUrl = "https://img.freepik.com/free-photo/digital-illustration-simple-blue-heart_181624-33760.jpg?semt=ais_hybrid&w=740";
 
-        db.collection("playlists").document(newPlaylistId).set(newPlaylist)
-            .addOnSuccessListener(aVoid -> {
-                db.collection("users").document(userId)
-                    .update("playlistId", FieldValue.arrayUnion(newPlaylistId))
-                    .addOnSuccessListener(aVoid2 -> {
-                        Toast.makeText(getContext(), "Đã thêm playlist thành công", Toast.LENGTH_SHORT).show();
-                        loadUserPlaylists();
-                    })
-                    .addOnFailureListener(e -> {
-                        Toast.makeText(getContext(), "Lỗi khi cập nhật user playlist: " + e.getMessage(), 
-                            Toast.LENGTH_SHORT).show();
-                    });
-            })
-            .addOnFailureListener(e -> {
-                Toast.makeText(getContext(), "Lỗi khi tạo playlist mới: " + e.getMessage(), 
-                    Toast.LENGTH_SHORT).show();
+        Playlist newPlaylist = new Playlist(
+            newPlaylistId, 
+            playlistName, 
+            new ArrayList<>(),
+            defaultCoverUrl,
+            createdAtString
+        );
+
+        // First check if playlist name already exists for this user
+        db.collection("playlists")
+            .whereEqualTo("name", playlistName)
+            .get()
+            .addOnCompleteListener(task -> {
+                if (task.isSuccessful()) {
+                    boolean nameExists = false;
+                    for (DocumentSnapshot doc : task.getResult()) {
+                        Playlist existingPlaylist = doc.toObject(Playlist.class);
+                        if (existingPlaylist != null && existingPlaylist.getName().equals(playlistName)) {
+                            nameExists = true;
+                            break;
+                        }
+                    }
+
+                    if (nameExists) {
+                        progressDialog.dismiss();
+                        Toast.makeText(getContext(), "Tên playlist đã tồn tại", Toast.LENGTH_SHORT).show();
+                    } else {
+                        // Create new playlist
+                        db.collection("playlists").document(newPlaylistId)
+                            .set(newPlaylist)
+                            .addOnSuccessListener(aVoid -> {
+                                // Update user's playlist array
+                                db.collection("users").document(userId)
+                                    .update("playlistId", FieldValue.arrayUnion(newPlaylistId))
+                                    .addOnSuccessListener(aVoid2 -> {
+                                        progressDialog.dismiss();
+                                        Toast.makeText(getContext(), "Đã thêm playlist thành công", Toast.LENGTH_SHORT).show();
+                                        loadUserPlaylists();
+                                    })
+                                    .addOnFailureListener(e -> {
+                                        progressDialog.dismiss();
+                                        Log.e("PlaylistContent", "Error updating user playlist", e);
+                                        Toast.makeText(getContext(), 
+                                            "Lỗi khi cập nhật user playlist: " + e.getMessage(), 
+                                            Toast.LENGTH_SHORT).show();
+                                        // Rollback playlist creation
+                                        db.collection("playlists").document(newPlaylistId).delete();
+                                    });
+                            })
+                            .addOnFailureListener(e -> {
+                                progressDialog.dismiss();
+                                Log.e("PlaylistContent", "Error creating playlist", e);
+                                Toast.makeText(getContext(), 
+                                    "Lỗi khi tạo playlist mới: " + e.getMessage(), 
+                                    Toast.LENGTH_SHORT).show();
+                            });
+                    }
+                } else {
+                    progressDialog.dismiss();
+                    Toast.makeText(getContext(), "Lỗi khi kiểm tra tên playlist", Toast.LENGTH_SHORT).show();
+                }
             });
     }
 
@@ -437,8 +513,6 @@ public class PlaylistContentFragment extends Fragment implements PlaylistAdapter
                 // TODO: Sort by recent
             } else if (checkedId == R.id.chipAlphabetical) {
                 // TODO: Sort alphabetically
-            } else if (checkedId == R.id.chipCreator) {
-                // TODO: Sort by creator
             }
         });
     }

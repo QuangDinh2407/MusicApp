@@ -15,58 +15,80 @@
         android:elevation="0dp">
 
         <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingTop="16dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingTop="25dp"
             android:paddingStart="16dp"
             android:paddingEnd="16dp"
             app:layout_scrollFlags="scroll|enterAlways">
 
             <!-- Header Section -->
-            <LinearLayout
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/headerLayout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_marginBottom="16dp">
+                android:padding="16dp">
 
                 <com.google.android.material.imageview.ShapeableImageView
-                    android:id="@+id/ivUserAvatar"
+                    android:id="@+id/imgAvatar"
                     android:layout_width="32dp"
                     android:layout_height="32dp"
                     android:scaleType="centerCrop"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
                     app:shapeAppearanceOverlay="@style/CircleImageView"
-                    android:src="@drawable/default_avatar"/>
+                    tools:src="@tools:sample/avatars" />
 
                 <TextView
+                    android:id="@+id/tvTitle"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
+                    android:layout_marginStart="16dp"
+                    android:layout_marginEnd="16dp"
                     android:text="Thư viện của bạn"
-                    android:textSize="24sp"
-                    android:textStyle="bold"
-                    android:textColor="?attr/colorOnSurface"
-                    android:layout_marginStart="16dp"/>
+                    android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
+                    app:layout_constraintEnd_toStartOf="@+id/btnSearch"
+                    app:layout_constraintStart_toEndOf="@+id/imgAvatar"
+                    app:layout_constraintTop_toTopOf="parent" />
 
                 <ImageButton
                     android:id="@+id/btnSearch"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:src="@drawable/ic_search"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:layout_marginEnd="8dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="Tìm kiếm"
-                    android:layout_marginEnd="8dp"/>
+                    android:src="@drawable/ic_search"
+                    app:layout_constraintEnd_toStartOf="@+id/btnSort"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:tint="?attr/colorOnSurface" />
+
+                <ImageButton
+                    android:id="@+id/btnSort"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:layout_marginEnd="8dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Sắp xếp"
+                    android:src="@drawable/ic_sort"
+                    android:visibility="gone"
+                    app:layout_constraintEnd_toStartOf="@+id/btnAdd"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:tint="?attr/colorOnSurface" />
 
                 <ImageButton
                     android:id="@+id/btnAdd"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:src="@drawable/ic_add"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="Thêm"/>
+                    android:contentDescription="Thêm mới"
+                    android:src="@drawable/ic_add"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:tint="?attr/colorOnSurface" />
 
-            </LinearLayout>
+            </androidx.constraintlayout.widget.ConstraintLayout>
 
             <!-- Tab Chips -->
             <com.google.android.material.chip.ChipGroup
