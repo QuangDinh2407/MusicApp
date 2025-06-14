@@ -122,4 +122,9 @@
     <color name="text_secondary_dark">#B3B3B3</color>
     <color name="text_secondary_light">#6B6B6B</color>
     <color name="accent_orange">#ff914d</color>
+    <!-- Mini Player Colors -->
+    <color name="primary">#FF6200EE</color>
+    <color name="secondary">#FF03DAC5</color>
+    <color name="mini_player_background">#1E1E1E</color>
+    <color name="mini_player_card">#2D2D2D</color>
 </resources>

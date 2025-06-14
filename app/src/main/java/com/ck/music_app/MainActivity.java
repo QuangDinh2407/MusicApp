@@ -1,6 +1,15 @@
 package com.ck.music_app;
 
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.ServiceConnection;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.IBinder;
 import android.util.Log;
 import android.view.View;
 import android.view.animation.Animation;
@@ -9,13 +18,22 @@ import android.widget.Toast;
 
 import com.ck.music_app.Fragment.MiniPlayerFragment;
 import com.ck.music_app.Fragment.PlayMusicFragment;
+import android.widget.ImageButton;
+import android.widget.ImageView;
+import android.widget.ProgressBar;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import com.bumptech.glide.Glide;
 import com.ck.music_app.MainFragment.HomeFragment;
 import com.ck.music_app.MainFragment.LibraryFragment;
 import com.ck.music_app.MainFragment.ProfileFragment;
 import com.ck.music_app.MainFragment.SearchFragment;
 import com.ck.music_app.Model.Song;
 import com.ck.music_app.Viewpager.MainPagerAdapter;
+import com.ck.music_app.utils.FirestoreUtils;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
@@ -69,7 +87,7 @@ public class MainActivity extends AppCompatActivity implements MiniPlayerFragmen
         }
 
         FirebaseFirestore db = FirebaseFirestore.getInstance();
-        // Chạy test ngay khi khởi tạo
+        firebaseService = FirebaseService.getInstance();
         testFirestoreUtils();
 
         // Khởi tạo các fragment chính
@@ -97,6 +115,48 @@ public class MainActivity extends AppCompatActivity implements MiniPlayerFragmen
                 .replace(R.id.mini_player_container, miniPlayerFragment)
                 .commit();
 
+    private void initMiniPlayer() {
+        miniPlayerContainer = findViewById(R.id.mini_player_container);
+        miniPlayerCover = findViewById(R.id.mini_player_cover);
+        miniPlayerTitle = findViewById(R.id.mini_player_title);
+        miniPlayerArtist = findViewById(R.id.mini_player_artist);
+        miniPlayerPlayPause = findViewById(R.id.mini_player_play_pause);
+        miniPlayerNext = findViewById(R.id.mini_player_next);
+        miniPlayerProgress = findViewById(R.id.mini_player_progress);
+
+        // Click listeners for mini player
+        miniPlayerContainer.setOnClickListener(v -> {
+            if (serviceBound && musicService.getCurrentSong() != null) {
+                Intent intent = new Intent(MainActivity.this, PlayMusicActivity.class);
+                intent.putExtra("songList", (java.io.Serializable) musicService.getSongList());
+                intent.putExtra("currentIndex", musicService.getCurrentIndex());
+                startActivity(intent);
+            }
+        });
+
+        miniPlayerPlayPause.setOnClickListener(v -> {
+            if (serviceBound) {
+                if (musicService.isPlaying()) {
+                    musicService.pauseSong();
+                    miniPlayerPlayPause.setImageResource(R.drawable.ic_play_white_36dp);
+                    stopProgressUpdate();
+                } else {
+                    musicService.resumeSong();
+                    miniPlayerPlayPause.setImageResource(R.drawable.ic_pause_white_36dp);
+                    startProgressUpdate();
+                }
+            }
+        });
+
+        miniPlayerNext.setOnClickListener(v -> {
+            if (serviceBound) {
+                musicService.playNext();
+                updateMiniPlayer();
+            }
+        });
+    }
+
+    private void initListeners() {
         // Khi vuốt ViewPager2 thì đổi tab menu
         viewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override
@@ -149,7 +209,6 @@ public class MainActivity extends AppCompatActivity implements MiniPlayerFragmen
 
     private void testFirestoreUtils() {
         Log.d(TAG, "Bắt đầu test FirestoreUtils");
-
 
         // Test lấy bài hát từ playlist
         String playlistId = "124e5b94-4f0f-487b-98ec-663c04e96979";
@@ -283,5 +342,83 @@ public class MainActivity extends AppCompatActivity implements MiniPlayerFragmen
         } else {
             super.onBackPressed();
         }
+    private void loadCurrentSongFromFirebase() {
+        // Kiểm tra user đã đăng nhập chưa
+        if (firebaseService == null) return;
+        
+        firebaseService.getCurrentUserSongPlaying(new FirebaseService.FirestoreCallback<String>() {
+            @Override
+            public void onSuccess(String songId) {
+                if (songId != null && !songId.isEmpty()) {
+                    Log.d(TAG, "Found current song ID: " + songId);
+                    // Lấy thông tin bài hát từ songId
+                    firebaseService.getSongById(songId, new FirebaseService.FirestoreCallback<Song>() {
+                        @Override
+                        public void onSuccess(Song song) {
+                            Log.d(TAG, "Loaded current song: " + song.getTitle());
+                            // Set bài hát vào MusicService và update mini player
+                            if (serviceBound && musicService != null) {
+                                List<Song> singleSongList = new ArrayList<>();
+                                singleSongList.add(song);
+                                musicService.setList(singleSongList, 0);
+                                // Không auto play, chỉ hiển thị trong mini player
+                                updateMiniPlayerWithSong(song);
+                            }
+                        }
+
+                        @Override
+                        public void onError(Exception e) {
+                            Log.e(TAG, "Error loading current song", e);
+                        }
+                    });
+                } else {
+                    Log.d(TAG, "No current song found");
+                }
+            }
+
+            @Override
+            public void onError(Exception e) {
+                Log.e(TAG, "Error getting current song ID", e);
+            }
+        });
+    }
+
+    private void updateMiniPlayerWithSong(Song song) {
+        if (song != null) {
+            miniPlayerContainer.setVisibility(View.VISIBLE);
+            miniPlayerTitle.setText(song.getTitle());
+            miniPlayerArtist.setText(song.getArtistId());
+            
+            Glide.with(this)
+                    .load(song.getCoverUrl())
+                    .placeholder(R.mipmap.ic_launcher)
+                    .into(miniPlayerCover);
+
+            // Set button to play state (not playing yet)
+            miniPlayerPlayPause.setImageResource(R.drawable.ic_play_white_36dp);
+            miniPlayerProgress.setProgress(0);
+        }
+    }
+
+    // Method public để gọi từ bên ngoài khi cần refresh current song
+    public void refreshCurrentSong() {
+        loadCurrentSongFromFirebase();
+    }
+
+    // Method public để stop music service khi đăng xuất
+    public void stopMusicService() {
+        if (serviceBound && musicService != null) {
+            musicService.stopMusic();
+            unbindService(serviceConnection);
+            serviceBound = false;
+        }
+        
+        // Stop service hoàn toàn
+        Intent serviceIntent = new Intent(this, MusicService.class);
+        stopService(serviceIntent);
+        
+        // Ẩn mini player
+        miniPlayerContainer.setVisibility(View.GONE);
+        stopProgressUpdate();
     }
 }
