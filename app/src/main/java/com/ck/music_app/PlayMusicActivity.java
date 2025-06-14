@@ -26,6 +26,10 @@ import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
 import android.view.View;
 import android.view.animation.LinearInterpolator;
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Environment;
+import java.io.File;
 
 public class PlayMusicActivity extends AppCompatActivity {
 
@@ -33,6 +37,7 @@ public class PlayMusicActivity extends AppCompatActivity {
     private TextView tvTitle, tvArtist, tvCurrentTime, tvTotalTime;
     private SeekBar seekBar;
     private ImageButton btnPlayPause, btnBack, btnPrevious, btnNext;
+    private ImageView btnDownload;
 
     private List<Song> songList = new ArrayList<>();
 
@@ -72,6 +77,7 @@ public class PlayMusicActivity extends AppCompatActivity {
         btnBack = findViewById(R.id.btnBack);
         btnPrevious = findViewById(R.id.btnPrevious);
         btnNext = findViewById(R.id.btnNext);
+        btnDownload = findViewById(R.id.btnDownload);
     }
 
     private void initListeners() {
@@ -96,6 +102,8 @@ public class PlayMusicActivity extends AppCompatActivity {
                 loadSong(currentIndex);
             }
         });
+
+        btnDownload.setOnClickListener(v -> downloadCurrentSong());
 
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
@@ -222,6 +230,26 @@ public class PlayMusicActivity extends AppCompatActivity {
             }
         }
     };
+
+    private void downloadCurrentSong() {
+        Song song = songList.get(currentIndex);
+        String url = song.getAudioUrl();
+        String fileName = MusicUtils.removeVietnameseDiacritics(song.getTitle()) + " - " + MusicUtils.removeVietnameseDiacritics(song.getArtistId()) + ".mp3";
+        android.app.DownloadManager downloadManager = (android.app.DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+        android.net.Uri uri = android.net.Uri.parse(url);
+        android.app.DownloadManager.Request request = new android.app.DownloadManager.Request(uri);
+        request.setTitle(song.getTitle());
+        request.setDescription("Đang tải về...");
+        request.setDestinationInExternalPublicDir(android.os.Environment.DIRECTORY_MUSIC, fileName);
+        request.setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+        downloadManager.enqueue(request);
+        android.widget.Toast.makeText(this, "Đang tải bài hát về thư mục Nhạc", android.widget.Toast.LENGTH_SHORT).show();
+        // Gửi broadcast để MediaStore index lại file mới
+        File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), fileName);
+        Intent scanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+        scanIntent.setData(Uri.fromFile(file));
+        sendBroadcast(scanIntent);
+    }
 
     @Override
     protected void onDestroy() {

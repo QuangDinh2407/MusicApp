@@ -121,4 +121,5 @@
     <color name="text_primary_light">#000000</color>
     <color name="text_secondary_dark">#B3B3B3</color>
     <color name="text_secondary_light">#6B6B6B</color>
+    <color name="accent_orange">#ff914d</color>
 </resources>
