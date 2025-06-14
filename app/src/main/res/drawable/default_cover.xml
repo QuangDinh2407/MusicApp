@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+    
+    <!-- Background -->
+    <path
+        android:fillColor="#CCCCCC"
+        android:pathData="M0,0h200v200h-200z"/>
+    
+    <!-- Music Note Icon -->
+    <path
+        android:fillColor="#666666"
+        android:pathData="M100,60c-22.1,0 -40,17.9 -40,40s17.9,40 40,40 40,-17.9 40,-40 -17.9,-40 -40,-40zM100,120c-11,0 -20,-9 -20,-20s9,-20 20,-20 20,9 20,20 -9,20 -20,20z"/>
+    
+    <!-- Music Note Stem -->
+    <path
+        android:fillColor="#666666"
+        android:pathData="M100,100v60"/>
+    
+    <!-- Music Note Head -->
+    <path
+        android:fillColor="#666666"
+        android:pathData="M100,160c-5.5,0 -10,4.5 -10,10s4.5,10 10,10 10,-4.5 10,-10 -4.5,-10 -10,-10z"/>
+</vector> 

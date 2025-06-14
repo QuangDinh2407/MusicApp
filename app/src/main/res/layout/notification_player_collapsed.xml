@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="64dp"
+    android:background="@drawable/notification_modern_background"
+    android:orientation="horizontal"
+    android:padding="12dp"
+    android:gravity="center_vertical">
+
+    <!-- App Logo -->
+    <ImageView
+        android:id="@+id/notification_app_logo"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_marginEnd="12dp"
+        android:src="@drawable/notification_app_logo"
+        android:scaleType="centerCrop" />
+
+    <!-- Song Information -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:layout_marginEnd="12dp">
+
+        <TextView
+            android:id="@+id/notification_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Yêu 5 (Break Remix)"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="@color/notification_title_modern"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/notification_artist"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Rhymastic"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="@color/notification_text_modern"
+            android:textSize="14sp"
+            android:layout_marginTop="2dp" />
+    </LinearLayout>
+
+    <!-- Essential Controls -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <ImageView
+            android:id="@+id/notification_previous"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:padding="8dp"
+            android:src="@drawable/ic_skip_previous"
+            android:tint="@color/notification_icon_modern"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:layout_marginEnd="4dp" />
+
+        <ImageView
+            android:id="@+id/notification_play_pause"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:padding="10dp"
+            android:src="@drawable/ic_pause"
+            android:tint="@color/notification_icon_modern"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp" />
+
+        <ImageView
+            android:id="@+id/notification_next"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:padding="8dp"
+            android:src="@drawable/ic_skip_next"
+            android:tint="@color/notification_icon_modern"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="8dp" />
+
+        <ImageView
+            android:id="@+id/notification_close"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:padding="6dp"
+            android:src="@drawable/ic_close"
+            android:tint="@color/notification_icon_modern"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:alpha="0.7" />
+    </LinearLayout>
+</LinearLayout> 

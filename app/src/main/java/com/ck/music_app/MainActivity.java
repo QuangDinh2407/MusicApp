@@ -14,6 +14,11 @@ import android.util.Log;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.os.Build;
+import android.os.Bundle;
+import android.util.Log;
 import android.widget.Toast;
 
 import com.ck.music_app.Fragment.MiniPlayerFragment;
@@ -34,9 +39,14 @@ import com.ck.music_app.Viewpager.MainPagerAdapter;
 import com.ck.music_app.utils.FirestoreUtils;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GoogleApiAvailability;
 
 import androidx.activity.EdgeToEdge;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.viewpager2.widget.ViewPager2;
@@ -61,6 +71,12 @@ public class MainActivity extends AppCompatActivity implements MiniPlayerFragmen
     private FirebaseFirestore db;
     private View miniPlayerContainer;
     private View playerContainer;
+
+    private static final int PERMISSION_REQUEST_CODE = 123;
+    private static final String[] REQUIRED_PERMISSIONS = {
+            Manifest.permission.POST_NOTIFICATIONS,
+            Manifest.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -97,9 +113,32 @@ public class MainActivity extends AppCompatActivity implements MiniPlayerFragmen
                 new LibraryFragment(),
                 new ProfileFragment()
         };
+        // Kiểm tra Google Play Services trong background thread
+        checkGooglePlayServicesAsync();
 
+        // Kiểm tra và yêu cầu quyền nếu cần
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            checkAndRequestPermissions();
+        }
+
+        // Setup UI components first
+        setupViews();
+
+        // Initialize fragments lazily
+        initializeFragmentsLazy();
+    }
+
+    private void setupViews() {
         viewPager = findViewById(R.id.view_pager);
-        MainPagerAdapter adapter = new MainPagerAdapter(this, fragments);
+        bottomNavigationView = findViewById(R.id.bottom_navigation);
+
+        if (viewPager == null || bottomNavigationView == null) {
+            Log.e("MainActivity", "Failed to find views in layout");
+            return;
+        }
+
+        // Setup ViewPager with empty adapter first
+        MainPagerAdapter adapter = new MainPagerAdapter(this, new Fragment[4]);
         viewPager.setAdapter(adapter);
         viewPager.setCurrentItem(0, false);
         viewPager.setOffscreenPageLimit(2); // Giới hạn số lượng fragment được giữ trong bộ nhớ
@@ -157,15 +196,43 @@ public class MainActivity extends AppCompatActivity implements MiniPlayerFragmen
     }
 
     private void initListeners() {
+        setupViewPagerCallbacks();
+        setupBottomNavigation();
+    }
+
+    private void initializeFragmentsLazy() {
+        // Initialize fragments in background to avoid blocking main thread
+        new Thread(() -> {
+            fragments = new Fragment[] {
+                    new HomeFragment(),
+                    new SearchFragment(),
+                    new LibraryFragment(),
+                    new ProfileFragment()
+            };
+
+            // Update adapter on main thread
+            runOnUiThread(() -> {
+                if (viewPager != null && viewPager.getAdapter() instanceof MainPagerAdapter) {
+                    ((MainPagerAdapter) viewPager.getAdapter()).updateFragments(fragments);
+                }
+            });
+        }).start();
+    }
+
+    private void setupViewPagerCallbacks() {
         // Khi vuốt ViewPager2 thì đổi tab menu
         viewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override
             public void onPageSelected(int position) {
                 super.onPageSelected(position);
-                bottomNavigationView.getMenu().getItem(position).setChecked(true);
+                if (bottomNavigationView != null && bottomNavigationView.getMenu().size() > position) {
+                    bottomNavigationView.getMenu().getItem(position).setChecked(true);
+                }
             }
         });
+    }
 
+    private void setupBottomNavigation() {
         // Khi bấm menu thì đổi trang ViewPager2
         bottomNavigationView.setOnNavigationItemSelectedListener(item -> {
             switch (item.getItemId()) {
@@ -420,5 +487,66 @@ public class MainActivity extends AppCompatActivity implements MiniPlayerFragmen
         // Ẩn mini player
         miniPlayerContainer.setVisibility(View.GONE);
         stopProgressUpdate();
+    private void checkGooglePlayServicesAsync() {
+        // Run Google Play Services check in background thread
+        new Thread(() -> {
+            GoogleApiAvailability googleApiAvailability = GoogleApiAvailability.getInstance();
+            int status = googleApiAvailability.isGooglePlayServicesAvailable(this);
+
+            runOnUiThread(() -> {
+                if (status != ConnectionResult.SUCCESS) {
+                    Log.w("MainActivity", "Google Play Services not available: " + status);
+                    if (googleApiAvailability.isUserResolvableError(status)) {
+                        googleApiAvailability.getErrorDialog(this, status, 2404).show();
+                    } else {
+                        Log.e("MainActivity", "This device is not supported for Google Play Services");
+                        Toast.makeText(this, "Thiết bị không hỗ trợ Google Play Services", Toast.LENGTH_LONG).show();
+                    }
+                } else {
+                    Log.d("MainActivity", "Google Play Services is available");
+                }
+            });
+        }).start();
+    }
+
+    private void checkAndRequestPermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            List<String> permissionsToRequest = new ArrayList<>();
+
+            for (String permission : REQUIRED_PERMISSIONS) {
+                if (checkSelfPermission(permission) != PackageManager.PERMISSION_GRANTED) {
+                    permissionsToRequest.add(permission);
+                }
+            }
+
+            if (!permissionsToRequest.isEmpty()) {
+                requestPermissions(
+                        permissionsToRequest.toArray(new String[0]),
+                        PERMISSION_REQUEST_CODE);
+            }
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+            @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode == PERMISSION_REQUEST_CODE) {
+            boolean allGranted = true;
+            for (int result : grantResults) {
+                if (result != PackageManager.PERMISSION_GRANTED) {
+                    allGranted = false;
+                    break;
+                }
+            }
+
+            if (!allGranted) {
+                // Hiển thị thông báo nếu người dùng từ chối quyền
+                Toast.makeText(this,
+                        "Cần cấp quyền để phát nhạc khi ứng dụng chạy nền",
+                        Toast.LENGTH_LONG).show();
+            }
+        }
     }
 }

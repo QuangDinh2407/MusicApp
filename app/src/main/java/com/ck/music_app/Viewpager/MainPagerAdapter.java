@@ -6,7 +6,7 @@ import androidx.fragment.app.FragmentActivity;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
 
 public class MainPagerAdapter extends FragmentStateAdapter {
-    private final Fragment[] fragments;
+    private Fragment[] fragments;
 
     public MainPagerAdapter(@NonNull FragmentActivity fa, Fragment[] fragments) {
         super(fa);
@@ -16,11 +16,20 @@ public class MainPagerAdapter extends FragmentStateAdapter {
     @NonNull
     @Override
     public Fragment createFragment(int position) {
+        // Return empty fragment if fragments not initialized yet
+        if (fragments == null || position >= fragments.length || fragments[position] == null) {
+            return new Fragment(); // Empty placeholder fragment
+        }
         return fragments[position];
     }
 
     @Override
     public int getItemCount() {
-        return fragments.length;
+        return fragments != null ? fragments.length : 4; // Default to 4 tabs
+    }
+
+    public void updateFragments(Fragment[] newFragments) {
+        this.fragments = newFragments;
+        notifyDataSetChanged();
     }
 }
