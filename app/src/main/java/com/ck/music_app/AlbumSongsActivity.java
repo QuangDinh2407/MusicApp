@@ -2,6 +2,7 @@ package com.ck.music_app;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -60,10 +61,40 @@ public class AlbumSongsActivity extends AppCompatActivity {
         loadSongs(albumId);
 
         listViewSongs.setOnItemClickListener((parent, v, position, id) -> {
-            Intent intent = new Intent(this, PlayMusicActivity.class);
-            intent.putExtra("songList", (Serializable) songList);
-            intent.putExtra("currentIndex", position);
-            startActivity(intent);
+            Song selectedSong = songList.get(position);
+            String songId = selectedSong.getSongId();
+            
+            // Debug log
+            Log.d("AlbumSongsActivity", "Clicked song: " + selectedSong.getTitle());
+            Log.d("AlbumSongsActivity", "Song ID: " + songId);
+            Log.d("AlbumSongsActivity", "Position: " + position);
+            
+            // Lưu ID bài hát vào Firebase
+            firebaseService.updateSongPlaying(songId, new FirebaseService.FirestoreCallback<Void>() {
+                @Override
+                public void onSuccess(Void result) {
+                    Log.d("AlbumSongsActivity", "Successfully saved songId to Firebase: " + songId);
+                    // Sau khi lưu thành công, chuyển sang PlayMusicActivity
+                    Intent intent = new Intent(AlbumSongsActivity.this, PlayMusicActivity.class);
+                    intent.putExtra("songList", (Serializable) songList);
+                    intent.putExtra("currentIndex", position);
+                    startActivity(intent);
+                }
+
+                @Override
+                public void onError(Exception e) {
+                    Log.e("AlbumSongsActivity", "Error saving songId to Firebase", e);
+                    // Nếu lỗi vẫn cho phép phát nhạc
+                    Toast.makeText(AlbumSongsActivity.this, 
+                        "Không thể lưu bài hát: " + e.getMessage(), 
+                        Toast.LENGTH_SHORT).show();
+                    
+                    Intent intent = new Intent(AlbumSongsActivity.this, PlayMusicActivity.class);
+                    intent.putExtra("songList", (Serializable) songList);
+                    intent.putExtra("currentIndex", position);
+                    startActivity(intent);
+                }
+            });
         });
     }
 

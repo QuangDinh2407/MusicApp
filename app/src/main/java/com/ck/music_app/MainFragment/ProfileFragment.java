@@ -14,6 +14,7 @@ import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 
 import com.ck.music_app.Auth.LoginActivity;
+import com.ck.music_app.MainActivity;
 import com.ck.music_app.R;
 import com.google.android.material.button.MaterialButton;
 import com.google.firebase.auth.FirebaseAuth;
@@ -92,23 +93,33 @@ public class ProfileFragment extends Fragment {
             .setTitle("Đăng xuất")
             .setMessage("Bạn có chắc chắn muốn đăng xuất?")
             .setPositiveButton("Đăng xuất", (dialog, which) -> {
-                // Đăng xuất khỏi Firebase
-                auth.signOut();
+                // Dừng nhạc trước khi đăng xuất (nhưng vẫn lưu songPlaying trên Firebase)
+                if (getActivity() instanceof MainActivity) {
+                    ((MainActivity) getActivity()).stopMusicService();
+                }
                 
-                // Xóa dữ liệu trong cả hai SharedPreferences
-                SharedPreferences loginSession = requireContext().getSharedPreferences("LoginSession", Context.MODE_PRIVATE);
-                SharedPreferences loginPrefs = requireContext().getSharedPreferences("LoginPrefs", Context.MODE_PRIVATE);
-                
-                loginSession.edit().clear().apply();
-                loginPrefs.edit().clear().apply();
-                
-                // Chuyển về màn hình đăng nhập
-                Intent intent = new Intent(getActivity(), LoginActivity.class);
-                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                startActivity(intent);
-                requireActivity().finish();
+                // Đăng xuất ngay lập tức (không clear songPlaying)
+                performLogout();
             })
             .setNegativeButton("Hủy", null)
             .show();
+    }
+
+    private void performLogout() {
+        // Đăng xuất khỏi Firebase
+        auth.signOut();
+        
+        // Xóa dữ liệu trong cả hai SharedPreferences
+        SharedPreferences loginSession = requireContext().getSharedPreferences("LoginSession", Context.MODE_PRIVATE);
+        SharedPreferences loginPrefs = requireContext().getSharedPreferences("LoginPrefs", Context.MODE_PRIVATE);
+        
+        loginSession.edit().clear().apply();
+        loginPrefs.edit().clear().apply();
+        
+        // Chuyển về màn hình đăng nhập
+        Intent intent = new Intent(getActivity(), LoginActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        requireActivity().finish();
     }
 }

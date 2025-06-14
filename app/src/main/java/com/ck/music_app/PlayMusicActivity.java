@@ -22,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 
 import com.ck.music_app.Model.Song;
 import com.ck.music_app.Services.MusicService;
+import com.ck.music_app.Services.FirebaseService;
 import com.ck.music_app.utils.MusicUtils;
 import com.ck.music_app.utils.GradientUtils;
 import com.bumptech.glide.request.target.CustomTarget;
@@ -42,6 +43,7 @@ public class PlayMusicActivity extends AppCompatActivity {
 
     private int currentIndex;
     private MusicService musicService;
+    private FirebaseService firebaseService;
     private boolean serviceBound = false;
     private Handler handler = new Handler();
     private ObjectAnimator vinylRotationAnimator;
@@ -74,6 +76,8 @@ public class PlayMusicActivity extends AppCompatActivity {
         songList = (List<Song>) getIntent().getSerializableExtra("songList");
         currentIndex = getIntent().getIntExtra("currentIndex", 0);
 
+        firebaseService = FirebaseService.getInstance();
+        
         initViews();
         initListeners();
         

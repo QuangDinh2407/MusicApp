@@ -178,6 +178,24 @@ public class MusicService extends Service {
         return currentIndex;
     }
 
+    public void stopMusic() {
+        if (mediaPlayer != null) {
+            try {
+                if (mediaPlayer.isPlaying()) {
+                    mediaPlayer.stop();
+                }
+                mediaPlayer.reset();
+                isPlaying = false;
+                notifyMusicUpdate();
+            } catch (IllegalStateException e) {
+                // Ignore
+            }
+        }
+        // Clear song list để đảm bảo không còn bài nào trong queue
+        songList.clear();
+        currentIndex = 0;
+    }
+
     private void notifyMusicUpdate() {
         // Gửi broadcast để thông báo thay đổi
         Intent intent = new Intent("MUSIC_UPDATE");

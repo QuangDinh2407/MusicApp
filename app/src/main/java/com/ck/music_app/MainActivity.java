@@ -25,6 +25,7 @@ import com.ck.music_app.MainFragment.ProfileFragment;
 import com.ck.music_app.MainFragment.SearchFragment;
 import com.ck.music_app.Model.Song;
 import com.ck.music_app.Services.MusicService;
+import com.ck.music_app.Services.FirebaseService;
 import com.ck.music_app.Viewpager.MainPagerAdapter;
 import com.ck.music_app.utils.FirestoreUtils;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
@@ -35,6 +36,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.viewpager2.widget.ViewPager2;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
@@ -43,6 +45,7 @@ public class MainActivity extends AppCompatActivity {
     private ViewPager2 viewPager;
     private BottomNavigationView bottomNavigationView;
     private FirebaseFirestore db;
+    private FirebaseService firebaseService;
     private View miniPlayerContainer;
     private ImageView miniPlayerCover;
     private TextView miniPlayerTitle, miniPlayerArtist;
@@ -59,6 +62,8 @@ public class MainActivity extends AppCompatActivity {
             musicService = binder.getService();
             serviceBound = true;
             updateMiniPlayer();
+            // Load current song from Firebase after service is connected
+            loadCurrentSongFromFirebase();
         }
 
         @Override
@@ -97,6 +102,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         FirebaseFirestore db = FirebaseFirestore.getInstance();
+        firebaseService = FirebaseService.getInstance();
         testFirestoreUtils();
 
         initViews();
@@ -324,5 +330,85 @@ public class MainActivity extends AppCompatActivity {
                         "Lỗi playlist: " + e.getMessage(), Toast.LENGTH_LONG).show();
             }
         });
+    }
+
+    private void loadCurrentSongFromFirebase() {
+        // Kiểm tra user đã đăng nhập chưa
+        if (firebaseService == null) return;
+        
+        firebaseService.getCurrentUserSongPlaying(new FirebaseService.FirestoreCallback<String>() {
+            @Override
+            public void onSuccess(String songId) {
+                if (songId != null && !songId.isEmpty()) {
+                    Log.d(TAG, "Found current song ID: " + songId);
+                    // Lấy thông tin bài hát từ songId
+                    firebaseService.getSongById(songId, new FirebaseService.FirestoreCallback<Song>() {
+                        @Override
+                        public void onSuccess(Song song) {
+                            Log.d(TAG, "Loaded current song: " + song.getTitle());
+                            // Set bài hát vào MusicService và update mini player
+                            if (serviceBound && musicService != null) {
+                                List<Song> singleSongList = new ArrayList<>();
+                                singleSongList.add(song);
+                                musicService.setList(singleSongList, 0);
+                                // Không auto play, chỉ hiển thị trong mini player
+                                updateMiniPlayerWithSong(song);
+                            }
+                        }
+
+                        @Override
+                        public void onError(Exception e) {
+                            Log.e(TAG, "Error loading current song", e);
+                        }
+                    });
+                } else {
+                    Log.d(TAG, "No current song found");
+                }
+            }
+
+            @Override
+            public void onError(Exception e) {
+                Log.e(TAG, "Error getting current song ID", e);
+            }
+        });
+    }
+
+    private void updateMiniPlayerWithSong(Song song) {
+        if (song != null) {
+            miniPlayerContainer.setVisibility(View.VISIBLE);
+            miniPlayerTitle.setText(song.getTitle());
+            miniPlayerArtist.setText(song.getArtistId());
+            
+            Glide.with(this)
+                    .load(song.getCoverUrl())
+                    .placeholder(R.mipmap.ic_launcher)
+                    .into(miniPlayerCover);
+
+            // Set button to play state (not playing yet)
+            miniPlayerPlayPause.setImageResource(R.drawable.ic_play_white_36dp);
+            miniPlayerProgress.setProgress(0);
+        }
+    }
+
+    // Method public để gọi từ bên ngoài khi cần refresh current song
+    public void refreshCurrentSong() {
+        loadCurrentSongFromFirebase();
+    }
+
+    // Method public để stop music service khi đăng xuất
+    public void stopMusicService() {
+        if (serviceBound && musicService != null) {
+            musicService.stopMusic();
+            unbindService(serviceConnection);
+            serviceBound = false;
+        }
+        
+        // Stop service hoàn toàn
+        Intent serviceIntent = new Intent(this, MusicService.class);
+        stopService(serviceIntent);
+        
+        // Ẩn mini player
+        miniPlayerContainer.setVisibility(View.GONE);
+        stopProgressUpdate();
     }
 }

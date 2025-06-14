@@ -198,6 +198,7 @@ public class FirebaseService {
                         for (QueryDocumentSnapshot document : task.getResult()) {
                             Song song = document.toObject(Song.class);
                             song.setSongId(document.getId());
+                            Log.d(TAG, "Loaded song: " + song.getTitle() + " with ID: " + document.getId());
                             songs.add(song);
                         }
                         callback.onSuccess(songs);
@@ -250,6 +251,82 @@ public class FirebaseService {
                         }
                     });
         }
+    }
+
+    public void getSongById(String songId, FirestoreCallback<Song> callback) {
+        if (songId == null || songId.isEmpty()) {
+            callback.onError(new Exception("Song ID is empty"));
+            return;
+        }
+
+        Log.d(TAG, "Getting song by ID: " + songId);
+        db.collection(SONGS_COLLECTION)
+                .document(songId)
+                .get()
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        DocumentSnapshot document = task.getResult();
+                        if (document.exists()) {
+                            Song song = document.toObject(Song.class);
+                            song.setSongId(document.getId());
+                            Log.d(TAG, "Found song: " + song.getTitle() + " with ID: " + document.getId());
+                            callback.onSuccess(song);
+                        } else {
+                            callback.onError(new Exception("Song not found"));
+                        }
+                    } else {
+                        Log.e(TAG, "Error getting song by ID", task.getException());
+                        callback.onError(task.getException());
+                    }
+                });
+    }
+
+    // User methods
+    public void updateSongPlaying(String songId, FirestoreCallback<Void> callback) {
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        if (currentUser == null) {
+            callback.onError(new Exception("User not logged in"));
+            return;
+        }
+
+        Log.d(TAG, "Updating songPlaying for user: " + currentUser.getUid());
+        Log.d(TAG, "SongId to save: " + songId);
+
+        Map<String, Object> updateData = new HashMap<>();
+        updateData.put("songPlaying", songId);
+
+        db.collection(USERS_COLLECTION)
+                .document(currentUser.getUid())
+                .update(updateData)
+                .addOnSuccessListener(aVoid -> {
+                    Log.d(TAG, "Successfully updated songPlaying: " + songId);
+                    callback.onSuccess(null);
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Error updating songPlaying", e);
+                    callback.onError(e);
+                });
+    }
+
+    public void getCurrentUserSongPlaying(FirestoreCallback<String> callback) {
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        if (currentUser == null) {
+            callback.onError(new Exception("User not logged in"));
+            return;
+        }
+
+        db.collection(USERS_COLLECTION)
+                .document(currentUser.getUid())
+                .get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        String songPlaying = documentSnapshot.getString("songPlaying");
+                        callback.onSuccess(songPlaying != null ? songPlaying : "");
+                    } else {
+                        callback.onSuccess("");
+                    }
+                })
+                .addOnFailureListener(callback::onError);
     }
 
     // Callback interfaces
