@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/background"
+    android:fitsSystemWindows="true">
+
+    <!-- Header với ảnh nền và thông tin -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <!-- Ảnh nền -->
+        <ImageView
+            android:id="@+id/imgBackground"
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:scaleType="centerCrop"
+            android:src="@drawable/test1"
+            android:alpha="0.7"/>
+
+        <!-- Gradient overlay -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:background="@drawable/gradient_overlay"/>
+
+        <!-- Nội dung header -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <ImageButton
+                android:id="@+id/btnBack"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/ic_back_button"
+                android:background="@android:color/transparent"
+                android:layout_margin="16dp"/>
+
+            <!-- Ảnh album -->
+            <ImageView
+                android:id="@+id/imgCover"
+                android:layout_width="150dp"
+                android:layout_height="150dp"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="24dp"
+                android:scaleType="centerCrop"/>
+
+            <!-- Thông tin album -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:id="@+id/tvAlbumTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="24sp"
+                    android:textStyle="bold"
+                    android:textColor="@android:color/white"/>
+
+                <TextView
+                    android:id="@+id/tvArtistName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:textSize="16sp"
+                    android:textColor="#B3FFFFFF"/>
+            </LinearLayout>
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- Danh sách bài hát -->
+    <ListView
+        android:id="@+id/listViewSongs"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:divider="@android:color/transparent"
+        android:dividerHeight="8dp"
+        android:paddingHorizontal="16dp"
+        android:clipToPadding="false"
+        android:scrollbars="none"/>
+
+</LinearLayout> 
