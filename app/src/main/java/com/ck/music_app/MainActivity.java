@@ -50,6 +50,18 @@ public class MainActivity extends AppCompatActivity implements MiniPlayerFragmen
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
 
+        // Thêm listener để theo dõi thay đổi back stack
+        getSupportFragmentManager().addOnBackStackChangedListener(() -> {
+            View fragmentContainer = findViewById(R.id.fragment_container);
+            View viewPager = findViewById(R.id.view_pager);
+            
+            if (getSupportFragmentManager().getBackStackEntryCount() == 0) {
+                // Nếu không còn fragment nào trong back stack
+                if (fragmentContainer != null) fragmentContainer.setVisibility(View.GONE);
+                if (viewPager != null) viewPager.setVisibility(View.VISIBLE);
+            }
+        });
+
         // Lấy email từ Intent và hiển thị Toast
         String email = getIntent().getStringExtra("email");
         if (email != null && !email.isEmpty()) {
@@ -112,6 +124,27 @@ public class MainActivity extends AppCompatActivity implements MiniPlayerFragmen
             }
             return true;
         });
+    }
+
+    @Override
+    public void onBackPressed() {
+        View fragmentContainer = findViewById(R.id.fragment_container);
+        View viewPager = findViewById(R.id.view_pager);
+
+        if (fragmentContainer != null && fragmentContainer.getVisibility() == View.VISIBLE) {
+            // Nếu đang hiển thị fragment container
+            if (getSupportFragmentManager().getBackStackEntryCount() > 0) {
+                // Nếu còn fragment trong back stack
+                getSupportFragmentManager().popBackStack();
+            } else {
+                // Nếu không còn fragment nào, ẩn container và hiện ViewPager
+                fragmentContainer.setVisibility(View.GONE);
+                if (viewPager != null) viewPager.setVisibility(View.VISIBLE);
+            }
+        } else {
+            // Nếu đang ở ViewPager, xử lý back như bình thường
+            super.onBackPressed();
+        }
     }
 
     private void testFirestoreUtils() {
