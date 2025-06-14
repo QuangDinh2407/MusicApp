@@ -1,4 +1,4 @@
-package com.ck.music_app.MainFragment;
+package com.ck.music_app.MainFragment.LibraryChildFragment;
 
 import android.os.Bundle;
 import androidx.fragment.app.Fragment;
@@ -14,19 +14,16 @@ import androidx.appcompat.app.AlertDialog;
 import com.ck.music_app.R;
 import com.ck.music_app.Model.Playlist;
 import com.ck.music_app.Adapter.PlaylistAdapter;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.Timestamp;
+
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.UUID;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -35,6 +32,9 @@ import androidx.cardview.widget.CardView;
 import android.view.ContextMenu;
 import android.view.MenuItem;
 import android.view.MenuInflater;
+import android.widget.LinearLayout;
+import com.google.android.material.chip.Chip;
+import com.google.android.material.chip.ChipGroup;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -43,25 +43,6 @@ import android.view.MenuInflater;
  */
 public class PlaylistContentFragment extends Fragment implements PlaylistAdapter.OnPlaylistListener {
 
-    private static final String ARG_PARAM1 = "param1";
-    private static final String ARG_PARAM2 = "param2";
-
-    private String mParam1;
-    private String mParam2;
-
-    public PlaylistContentFragment() {
-        // Required empty public constructor
-    }
-
-    public static PlaylistContentFragment newInstance(String param1, String param2) {
-        PlaylistContentFragment fragment = new PlaylistContentFragment();
-        Bundle args = new Bundle();
-        args.putString(ARG_PARAM1, param1);
-        args.putString(ARG_PARAM2, param2);
-        fragment.setArguments(args);
-        return fragment;
-    }
-
     private FirebaseAuth mAuth;
     private FirebaseAuth.AuthStateListener mAuthListener;
 
@@ -69,19 +50,25 @@ public class PlaylistContentFragment extends Fragment implements PlaylistAdapter
     private PlaylistAdapter adapter;
     private List<Playlist> playlistList;
     private FirebaseFirestore db;
-    private TextView tvEmptyState;
     private CardView cardCreatePlaylist;
     private RecyclerView rvSuggestedPlaylists;
+    private LinearLayout layoutEmptyState;
+    private ChipGroup chipGroupFilter;
+    private Chip chipRecent, chipAlphabetical, chipCreator;
 
     private Playlist selectedPlaylistForContextMenu;
+
+    public PlaylistContentFragment() {
+        // Required empty public constructor
+    }
+
+    public static PlaylistContentFragment newInstance() {
+        return new PlaylistContentFragment();
+    }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (getArguments() != null) {
-            mParam1 = getArguments().getString(ARG_PARAM1);
-            mParam2 = getArguments().getString(ARG_PARAM2);
-        }
 
         try {
             playlistList = new ArrayList<>();
@@ -116,9 +103,13 @@ public class PlaylistContentFragment extends Fragment implements PlaylistAdapter
             
             // Khởi tạo views
             rvPlaylist = view.findViewById(R.id.rvPlaylist);
-            tvEmptyState = view.findViewById(R.id.tvEmptyState);
             cardCreatePlaylist = view.findViewById(R.id.cardCreatePlaylist);
             rvSuggestedPlaylists = view.findViewById(R.id.rvSuggestedPlaylists);
+            layoutEmptyState = view.findViewById(R.id.layoutEmptyState);
+            chipGroupFilter = view.findViewById(R.id.chipGroupFilter);
+            chipRecent = view.findViewById(R.id.chipRecent);
+            chipAlphabetical = view.findViewById(R.id.chipAlphabetical);
+            chipCreator = view.findViewById(R.id.chipCreator);
 
             // Khởi tạo adapter
             adapter = new PlaylistAdapter(getContext(), playlistList, this);
@@ -138,6 +129,9 @@ public class PlaylistContentFragment extends Fragment implements PlaylistAdapter
             cardCreatePlaylist.setOnClickListener(v -> {
                 showAddPlaylistDialog();
             });
+
+            // Set default selection
+            chipRecent.setChecked(true);
 
             return view;
         } catch (Exception e) {
@@ -397,10 +391,10 @@ public class PlaylistContentFragment extends Fragment implements PlaylistAdapter
     private void updateEmptyState() {
         if (playlistList.isEmpty()) {
             rvPlaylist.setVisibility(View.GONE);
-            tvEmptyState.setVisibility(View.VISIBLE);
+            layoutEmptyState.setVisibility(View.VISIBLE);
         } else {
             rvPlaylist.setVisibility(View.VISIBLE);
-            tvEmptyState.setVisibility(View.GONE);
+            layoutEmptyState.setVisibility(View.GONE);
         }
     }
 
@@ -435,5 +429,17 @@ public class PlaylistContentFragment extends Fragment implements PlaylistAdapter
             })
             .setNegativeButton("Hủy", null)
             .show();
+    }
+
+    private void setupListeners() {
+        chipGroupFilter.setOnCheckedChangeListener((group, checkedId) -> {
+            if (checkedId == R.id.chipRecent) {
+                // TODO: Sort by recent
+            } else if (checkedId == R.id.chipAlphabetical) {
+                // TODO: Sort alphabetically
+            } else if (checkedId == R.id.chipCreator) {
+                // TODO: Sort by creator
+            }
+        });
     }
 } 

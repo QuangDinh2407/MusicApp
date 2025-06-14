@@ -1,21 +1,26 @@
 package com.ck.music_app.MainFragment;
 
 import android.os.Bundle;
-import androidx.fragment.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
 import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.fragment.app.Fragment;
+import androidx.viewpager2.widget.ViewPager2;
+
+import com.bumptech.glide.Glide;
+import com.ck.music_app.MainFragment.LibraryChildFragment.AlbumContentFragment;
+import com.ck.music_app.MainFragment.LibraryChildFragment.ArtistContentFragment;
+import com.ck.music_app.MainFragment.LibraryChildFragment.PlaylistContentFragment;
 import com.ck.music_app.R;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.android.material.tabs.TabLayout;
-import com.google.android.material.tabs.TabLayoutMediator;
+import com.google.android.material.chip.Chip;
+import com.google.android.material.chip.ChipGroup;
+import com.google.android.material.imageview.ShapeableImageView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.viewpager2.adapter.FragmentStateAdapter;
-import androidx.viewpager2.widget.ViewPager2;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -24,108 +29,129 @@ import androidx.viewpager2.widget.ViewPager2;
  */
 public class LibraryFragment extends Fragment {
 
-    // TODO: Rename parameter arguments, choose names that match
-    // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-    private static final String ARG_PARAM1 = "param1";
-    private static final String ARG_PARAM2 = "param2";
-
-    // TODO: Rename and change types of parameters
-    private String mParam1;
-    private String mParam2;
+    private ViewPager2 viewPager;
+    private ChipGroup chipGroupTabs;
+    private Chip chipPlaylists, chipArtists, chipAlbums;
+    private ImageButton btnSearch, btnAdd;
+    private ShapeableImageView ivUserAvatar;
+    private FirebaseAuth mAuth;
 
     public LibraryFragment() {
         // Required empty public constructor
     }
 
-    /**
-     * Use this factory method to create a new instance of
-     * this fragment using the provided parameters.
-     *
-     * @param param1 Parameter 1.
-     * @param param2 Parameter 2.
-     * @return A new instance of fragment LibaryFragment.
-     */
-    // TODO: Rename and change types and number of parameters
-    public static LibraryFragment newInstance(String param1, String param2) {
-        LibraryFragment fragment = new LibraryFragment();
-        Bundle args = new Bundle();
-        args.putString(ARG_PARAM1, param1);
-        args.putString(ARG_PARAM2, param2);
-        fragment.setArguments(args);
-        return fragment;
+    public static LibraryFragment newInstance() {
+        return new LibraryFragment();
     }
-
-    private TabLayout tabLayout;
-    private ViewPager2 viewPager;
-    private FloatingActionButton fabAdd;
-    private FirebaseAuth mAuth; // Giữ lại FirebaseAuth để kiểm tra trạng thái đăng nhập cho FAB
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (getArguments() != null) {
-            mParam1 = getArguments().getString(ARG_PARAM1);
-            mParam2 = getArguments().getString(ARG_PARAM2);
-        }
         mAuth = FirebaseAuth.getInstance();
     }
 
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
+    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
+                           Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_library, container, false);
+        initializeViews(view);
+        setupViewPager();
+        setupChips();
+        setupButtons();
+        updateUserAvatar();
+        return view;
+    }
 
-        tabLayout = view.findViewById(R.id.tabLayout);
+    private void initializeViews(View view) {
         viewPager = view.findViewById(R.id.viewPagerLibrary);
-        fabAdd = view.findViewById(R.id.fabAddPlaylist);
+        chipGroupTabs = view.findViewById(R.id.chipGroupTabs);
+        chipPlaylists = view.findViewById(R.id.chipPlaylists);
+        chipArtists = view.findViewById(R.id.chipArtists);
+        chipAlbums = view.findViewById(R.id.chipAlbums);
+        btnSearch = view.findViewById(R.id.btnSearch);
+        btnAdd = view.findViewById(R.id.btnAdd);
+        ivUserAvatar = view.findViewById(R.id.ivUserAvatar);
+    }
 
-        // Set up ViewPager2 with a custom adapter
+    private void setupViewPager() {
         LibraryPagerAdapter pagerAdapter = new LibraryPagerAdapter(this);
         viewPager.setAdapter(pagerAdapter);
-
-        // Connect TabLayout with ViewPager2
-        new TabLayoutMediator(tabLayout, viewPager, (tab, position) -> {
-            switch (position) {
-                case 0:
-                    tab.setText("Playlist");
-                    break;
-                case 1:
-                    tab.setText("Nghệ sĩ");
-                    break;
-                case 2:
-                    tab.setText("Album");
-                    break;
+        viewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
+            @Override
+            public void onPageSelected(int position) {
+                updateChipSelection(position);
+                updateAddButtonVisibility(position);
             }
-        }).attach();
+        });
+    }
 
-        fabAdd.setOnClickListener(v -> {
+    private void setupChips() {
+        chipPlaylists.setChecked(true);
+        
+        View.OnClickListener chipClickListener = v -> {
+            int position = 0;
+            if (v.getId() == R.id.chipArtists) {
+                position = 1;
+            } else if (v.getId() == R.id.chipAlbums) {
+                position = 2;
+            }
+            viewPager.setCurrentItem(position, true);
+        };
+
+        chipPlaylists.setOnClickListener(chipClickListener);
+        chipArtists.setOnClickListener(chipClickListener);
+        chipAlbums.setOnClickListener(chipClickListener);
+    }
+
+    private void updateChipSelection(int position) {
+        chipPlaylists.setChecked(position == 0);
+        chipArtists.setChecked(position == 1);
+        chipAlbums.setChecked(position == 2);
+    }
+
+    private void updateAddButtonVisibility(int position) {
+        // Chỉ hiển thị nút Add cho Playlists và Albums
+        btnAdd.setVisibility(position == 1 ? View.GONE : View.VISIBLE);
+    }
+
+    private void setupButtons() {
+        btnSearch.setOnClickListener(v -> {
+            // TODO: Implement search functionality
+            Toast.makeText(getContext(), "Tính năng tìm kiếm sẽ được triển khai sau", Toast.LENGTH_SHORT).show();
+        });
+
+        btnAdd.setOnClickListener(v -> {
             FirebaseUser currentUser = mAuth.getCurrentUser();
             if (currentUser == null) {
                 Toast.makeText(getContext(), "Vui lòng đăng nhập để thêm nội dung", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            int currentTab = viewPager.getCurrentItem();
-            if (currentTab == 0) { // Playlist tab selected
-                // Trigger showAddPlaylistDialog in PlaylistContentFragment
-                Fragment currentFragment = getChildFragmentManager().findFragmentByTag("f" + viewPager.getCurrentItem());
-                if (currentFragment instanceof PlaylistContentFragment) {
-                    ((PlaylistContentFragment) currentFragment).showAddPlaylistDialog();
-                } else {
-                    // This might happen if fragment is not yet initialized or recreated
-                    Toast.makeText(getContext(), "Fragment Playlist chưa sẵn sàng.", Toast.LENGTH_SHORT).show();
-                }
-            } else if (currentTab == 1) { // Album tab selected
+            int currentPosition = viewPager.getCurrentItem();
+            Fragment currentFragment = getChildFragmentManager()
+                    .findFragmentByTag("f" + currentPosition);
+
+            if (currentPosition == 0 && currentFragment instanceof PlaylistContentFragment) {
+                ((PlaylistContentFragment) currentFragment).showAddPlaylistDialog();
+            } else if (currentPosition == 2) {
                 Toast.makeText(getContext(), "Chức năng thêm Album sẽ được triển khai sau", Toast.LENGTH_SHORT).show();
-                // TODO: Show add album dialog
             }
         });
+    }
 
-        return view;
+    private void updateUserAvatar() {
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        if (currentUser != null && currentUser.getPhotoUrl() != null) {
+            Glide.with(this)
+                    .load(currentUser.getPhotoUrl())
+                    .placeholder(R.drawable.default_avatar)
+                    .error(R.drawable.default_avatar)
+                    .into(ivUserAvatar);
+        }
     }
 
     // Adapter for ViewPager2
-    private static class LibraryPagerAdapter extends FragmentStateAdapter {
+    private static class LibraryPagerAdapter extends androidx.viewpager2.adapter.FragmentStateAdapter {
         public LibraryPagerAdapter(@NonNull Fragment fragment) {
             super(fragment);
         }
@@ -135,13 +161,13 @@ public class LibraryFragment extends Fragment {
         public Fragment createFragment(int position) {
             switch (position) {
                 case 0:
-                    return PlaylistContentFragment.newInstance("", "");
+                    return PlaylistContentFragment.newInstance();
                 case 1:
-                    return ArtistContentFragment.newInstance("", "");
+                    return ArtistContentFragment.newInstance();
                 case 2:
-                    return AlbumContentFragment.newInstance("", "");
+                    return AlbumContentFragment.newInstance();
                 default:
-                    return PlaylistContentFragment.newInstance("", "");
+                    return PlaylistContentFragment.newInstance();
             }
         }
 
