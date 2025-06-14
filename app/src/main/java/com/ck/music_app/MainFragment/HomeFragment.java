@@ -27,6 +27,7 @@ import com.google.firebase.firestore.QuerySnapshot;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -81,42 +82,15 @@ public class HomeFragment extends Fragment {
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
+            Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_home, container, false);
-
 
         listViewSongs = view.findViewById(R.id.listViewSongs);
         songAdapter = new SongAdapter();
         listViewSongs.setAdapter(songAdapter);
-        System.out.println("Trước:"+ songList.size());
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
-        db.collection("songs").get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
-            @Override
-            public void onComplete(@NonNull Task<QuerySnapshot> task) {
-                if (task.isSuccessful()) {
-                    songList.clear();
-                    for (QueryDocumentSnapshot document : task.getResult()) {
-                        Song song = new Song();
-                        song.setSongId(document.getId());
-                        song.setAlbumId(document.getString("albumId"));
-                        song.setArtistId(document.getString("artistId"));
-                        song.setAudioUrl(document.getString("audioUrl"));
-                        song.setCoverUrl(document.getString("coverUrl"));
-                        song.setCreateAt(document.getString("createdAt"));
-                        song.setDuration(document.getLong("duration") != null ? document.getLong("duration").intValue() : 0);
-                        song.setGenreId(document.getString("genreId"));
-                        song.setLikeCount(document.getLong("likeCount") != null ? document.getLong("likeCount").intValue() : 0);
-                        song.setTitle(document.getString("title"));
-                        song.setViewCount(document.getLong("viewCount") != null ? document.getLong("viewCount").intValue() : 0);
-                        songList.add(song);
-                        System.out.println("hahaha+ lelele");
-                    }
-                    songAdapter.notifyDataSetChanged();
-                }
-            }
-        });
 
-        System.out.println("Sau:"+songList.size());
+        // Load songs in background with timeout
+        loadSongsAsync();
 
         listViewSongs.setOnItemClickListener((parent, v, position, id) -> {
             Intent intent = new Intent(getActivity(), PlayMusicActivity.class);
@@ -126,6 +100,79 @@ public class HomeFragment extends Fragment {
         });
 
         return view;
+    }
+
+    private void loadSongsAsync() {
+        // Load songs in background thread to avoid blocking UI
+        new Thread(() -> {
+            try {
+                FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+                // Add timeout to prevent hanging
+                db.collection("songs")
+                        .limit(50) // Limit initial load to 50 songs for better performance
+                        .get()
+                        .addOnCompleteListener(task -> {
+                            if (getActivity() == null)
+                                return; // Fragment might be destroyed
+
+                            getActivity().runOnUiThread(() -> {
+                                if (task.isSuccessful() && task.getResult() != null) {
+                                    songList.clear();
+                                    for (QueryDocumentSnapshot document : task.getResult()) {
+                                        try {
+                                            Song song = new Song();
+                                            song.setSongId(document.getId());
+
+                                            // Handle albumId safely
+                                            Object albumIdObj = document.get("albumId");
+                                            if (albumIdObj instanceof List) {
+                                                List<String> albumIds = (List<String>) albumIdObj;
+                                                if (!albumIds.isEmpty()) {
+                                                    song.setAlbumId(albumIds.get(0));
+                                                }
+                                            } else if (albumIdObj instanceof String) {
+                                                song.setAlbumId((String) albumIdObj);
+                                            }
+
+                                            song.setArtistId(document.getString("artistId"));
+                                            song.setAudioUrl(document.getString("audioUrl"));
+                                            song.setCoverUrl(document.getString("coverUrl"));
+                                            song.setCreateAt(document.getString("createdAt"));
+                                            song.setDuration(document.getLong("duration") != null
+                                                    ? document.getLong("duration").intValue()
+                                                    : 0);
+                                            song.setGenreId(document.getString("genreId"));
+                                            song.setLikeCount(document.getLong("likeCount") != null
+                                                    ? document.getLong("likeCount").intValue()
+                                                    : 0);
+                                            song.setTitle(document.getString("title"));
+                                            song.setViewCount(document.getLong("viewCount") != null
+                                                    ? document.getLong("viewCount").intValue()
+                                                    : 0);
+
+                                            songList.add(song);
+                                        } catch (Exception e) {
+                                            // Skip malformed documents
+                                            continue;
+                                        }
+                                    }
+
+                                    if (songAdapter != null) {
+                                        songAdapter.notifyDataSetChanged();
+                                    }
+                                } else {
+                                    // Handle error case
+                                    if (task.getException() != null) {
+                                        task.getException().printStackTrace();
+                                    }
+                                }
+                            });
+                        });
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
     }
 
     class SongAdapter extends ArrayAdapter<Song> {
@@ -142,7 +189,7 @@ public class HomeFragment extends Fragment {
 
             ImageView imgCover = convertView.findViewById(R.id.imgCover);
             TextView tvTitle = convertView.findViewById(R.id.tvTitle);
-            TextView tvViewCount = convertView.findViewById(R.id.tvViewCount);
+            TextView tvViewCount = convertView.findViewById(R.id.tvArtist);
 
             tvTitle.setText(song.getTitle());
             tvViewCount.setText("Lượt nghe: " + song.getViewCount());

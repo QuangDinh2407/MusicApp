@@ -14,11 +14,27 @@
       },
       "oauth_client": [
         {
+          "client_id": "793718457936-4m4lvr4rk2fldji95b8ks4ecvjrl4c8v.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.ck.music_app",
+            "certificate_hash": "092c8229d222b4c21f23d10ca61416d40edacd27"
+          }
+        },
+        {
           "client_id": "793718457936-e8136c13had24ctadjbimlmqn0p11isf.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.ck.music_app",
             "certificate_hash": "bc8a08ad529cb553d9172268284e107c6b81053f"
+          }
+        },
+        {
+          "client_id": "793718457936-fvn6bnsqe1n4f302upu3is8u4h2b420k.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.ck.music_app",
+            "certificate_hash": "b8f0d0e1f3c856528368719beca9465bcad7c34a"
           }
         },
         {

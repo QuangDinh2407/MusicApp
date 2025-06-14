@@ -3,14 +3,14 @@
     <color name= "SurfaceColor">#FFCC00</color>
     <color name="BackwardColorHeavy">#B0000000</color>
     <color name="backward_color">#DD000000</color>
-    <color name="colorPrimary">#3F51B5</color>
-    <color name="colorPrimaryDark">#303F9F</color>
-    <color name="colorAccent">@color/flatOrange</color>
+    <color name="colorPrimary">#FF6200EE</color>
+    <color name="colorPrimaryDark">#FF3700B3</color>
+    <color name="colorAccent">#FF03DAC5</color>
     <color name = "Gray">#22000000</color>
     <color name="NearlyWhite">#44ffffff</color>
     <color name="flatRed">#FF3B30</color>
     <color name="FlatGreen">#4CD964</color>
-    <color name="flatOrange">#FF9500</color>
+    <color name="flatOrange">#FF5722</color>
     <color name="FlatYellow">#FFCC00</color>
     <color name="FlatTealBlue">#5AC8FA</color>
     <color name="flatPurple">#5856D6</color>
@@ -28,7 +28,7 @@
 
     <item name="yellow" type="color">#F7B500</item>
     <item name="yellow_dark" type="color">#AC7E00</item>
-   <item name="FlatWhite" type="color">#F5F5F5</item>
+   <item name="FlatWhite" type="color">#FFFFFF</item>
     <item name="SplashBackground" type ="color">#f0f0f0</item>
     <integer-array name="androidcolors">
         <item>@color/yellow</item>
@@ -88,4 +88,38 @@
     <color name="greenStart">#a7f56e</color>
     <color name="greenEnd">#11c612</color>
     <color name="flatGreenEnd">#00BF84</color>
+    <color name="gray">#757575</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <color name="background_light">#F5F5F5</color>
+    <color name="card_background">#FFFFFF</color>
+    <color name="text_primary">#212121</color>
+    <color name="text_secondary">#757575</color>
+    <color name="accent_color">#1DB954</color>
+    <color name="divider_color">#E0E0E0</color>
+
+    <color name="background_dark">#121212</color>
+    <color name="card_background_dark">#1E1E1E</color>
+    <color name="text_primary_dark">#FFFFFF</color>
+    <color name="text_secondary_dark">#B3FFFFFF</color>
+    <color name="divider_dark">#2C2C2C</color>
+
+    <!-- Màu cho notification -->
+    <color name="notification_background">#FF2A2A2A</color>
+    <color name="notification_text">#B3FFFFFF</color>
+    <color name="notification_title">#FFFFFFFF</color>
+    <color name="notification_icon">#FFFFFFFF</color>
+    <color name="notification_border">#33FFFFFF</color>
+    
+    <!-- Màu cho notification hiện đại -->
+    <color name="notification_header_text">#66000000</color>
+    <color name="notification_title_modern">#FF1A1A1A</color>
+    <color name="notification_text_modern">#FF666666</color>
+    <color name="notification_icon_modern">#FF333333</color>
+    <color name="notification_progress_color">#FF2196F3</color>
+    <color name="notification_progress_background">#FFDDDDDD</color>
+    
+    <!-- Màu cho logo app -->
+    <color name="notification_logo_background">#FFFFFFFF</color>
+    <color name="notification_logo_border">#FFDDDDDD</color>
 </resources>
