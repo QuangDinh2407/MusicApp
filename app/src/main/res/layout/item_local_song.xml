@@ -1,66 +1,67 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:card_view="http://schemas.android.com/apk/res-auto"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="8dp"
-    card_view:cardCornerRadius="12dp"
-    card_view:cardElevation="2dp"
-    card_view:cardBackgroundColor="@android:color/white">
+    android:padding="16dp"
+    android:background="@color/FlatWhite">
 
-    <LinearLayout
-        android:orientation="horizontal"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:padding="8dp"
-        android:gravity="center_vertical">
+    <FrameLayout
+        android:id="@+id/iconContainer"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="@drawable/bg_music_icon"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent">
 
         <ImageView
-            android:id="@+id/imgSongThumb"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:src="@drawable/ic_music_orange"
-            android:background="@drawable/bg_circle_orange"
-            android:scaleType="centerInside"
-            android:padding="8dp" />
+            android:id="@+id/imgMusicIcon"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_music_note"
+            android:tint="#FFFFFF" />
+    </FrameLayout>
 
-        <LinearLayout
-            android:orientation="vertical"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginStart="12dp">
+    <TextView
+        android:id="@+id/tvSongTitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="8dp"
+        android:textSize="16sp"
+        android:textColor="#000000"
+        android:maxLines="1"
+        android:ellipsize="end"
+        app:layout_constraintStart_toEndOf="@id/iconContainer"
+        app:layout_constraintEnd_toStartOf="@id/tvSongDuration"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/tvSongArtist"/>
 
-            <TextView
-                android:id="@+id/tvSongTitle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Tên bài hát"
-                android:textColor="@android:color/black"
-                android:textStyle="bold"
-                android:textSize="15sp"
-                android:maxLines="1"
-                android:ellipsize="end" />
+    <TextView
+        android:id="@+id/tvSongArtist"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="8dp"
+        android:textSize="14sp"
+        android:textColor="#666666"
+        android:maxLines="1"
+        android:ellipsize="end"
+        app:layout_constraintStart_toEndOf="@id/iconContainer"
+        app:layout_constraintEnd_toStartOf="@id/tvSongDuration"
+        app:layout_constraintTop_toBottomOf="@id/tvSongTitle"
+        app:layout_constraintBottom_toBottomOf="parent"/>
 
-            <TextView
-                android:id="@+id/tvSongArtist"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Ca sĩ"
-                android:textColor="#888888"
-                android:textSize="13sp"
-                android:maxLines="1"
-                android:ellipsize="end" />
-        </LinearLayout>
+    <TextView
+        android:id="@+id/tvSongDuration"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="14sp"
+        android:textColor="#666666"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"/>
 
-        <TextView
-            android:id="@+id/tvSongDuration"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="03:45"
-            android:textColor="#888888"
-            android:textSize="13sp"
-            android:layout_marginStart="8dp" />
-    </LinearLayout>
-
-</androidx.cardview.widget.CardView> 
+</androidx.constraintlayout.widget.ConstraintLayout> 

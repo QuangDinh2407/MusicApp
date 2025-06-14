@@ -133,6 +133,13 @@
                 android:layout_height="48dp"
                 android:src="@drawable/ic_skip_next_white_36dp"
                 android:background="@android:color/transparent"/>
+            <ImageView
+                android:id="@+id/btnDownload"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginLeft="15dp"
+                android:src="@drawable/ic_download"
+                app:tint="@color/accent_orange" />
         </LinearLayout>
 
     </LinearLayout>
