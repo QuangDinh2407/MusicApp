@@ -1,6 +1,7 @@
 package com.ck.music_app.Adapter;
 
 import android.content.Context;
+import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -10,6 +11,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.bumptech.glide.Glide;
+import com.ck.music_app.AlbumSongsActivity;
 import com.ck.music_app.Model.Album;
 import com.ck.music_app.Model.ArtistWithAlbums;
 import com.ck.music_app.R;
@@ -54,8 +56,19 @@ public class ArtistAlbumAdapter extends ArrayAdapter<ArtistWithAlbums> {
                     .error(R.mipmap.ic_launcher)
                     .into(imgAlbumCover);
 
+            albumView.setOnClickListener(v -> {
+                Intent intent = new Intent(context, AlbumSongsActivity.class);
+                intent.putExtra("albumId", album.getId());
+                intent.putExtra("albumName", album.getTitle());
+                intent.putExtra("albumImage", album.getCoverUrl());
+                intent.putExtra("artistName", artistWithAlbums.getArtist().getName());
+                context.startActivity(intent);
+            });
+            
+
             layoutAlbums.addView(albumView);
         }
+
         return convertView;
     }
 }
