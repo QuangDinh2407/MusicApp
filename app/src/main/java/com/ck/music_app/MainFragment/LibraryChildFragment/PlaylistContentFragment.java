@@ -41,6 +41,8 @@ import android.text.TextWatcher;
 import android.text.Editable;
 import android.widget.Button;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import android.content.Intent;
+import com.ck.music_app.Activity.PlaylistDetailActivity;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -163,7 +165,9 @@ public class PlaylistContentFragment extends Fragment implements PlaylistAdapter
 
     @Override
     public void onPlaylistClick(Playlist playlist) {
-        Toast.makeText(getContext(), "Đã nhấp vào: " + playlist.getName(), Toast.LENGTH_SHORT).show();
+        Intent intent = new Intent(getContext(), PlaylistDetailActivity.class);
+        intent.putExtra("playlist", playlist);
+        startActivity(intent);
     }
 
     @Override

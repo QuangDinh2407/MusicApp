@@ -113,9 +113,16 @@
             android:layout_marginTop="32dp">
 
             <ImageButton
+                android:id="@+id/btnRepeat"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_marginRight="15dp"
+                android:src="@drawable/repeat"
+                android:background="@android:color/transparent"/>
+            <ImageButton
                 android:id="@+id/btnPrevious"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
                 android:src="@drawable/ic_skip_previous_white_36dp"
                 android:background="@android:color/transparent"/>
 
@@ -129,17 +136,24 @@
 
             <ImageButton
                 android:id="@+id/btnNext"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
                 android:src="@drawable/ic_skip_next_white_36dp"
                 android:background="@android:color/transparent"/>
             <ImageView
                 android:id="@+id/btnDownload"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
                 android:layout_marginLeft="15dp"
                 android:src="@drawable/ic_download"
                 app:tint="@color/accent_orange" />
+            <ImageButton
+                android:id="@+id/btnAddPlaylist"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_marginLeft="15dp"
+                android:src="@drawable/heart"
+                android:background="@android:color/transparent"/>
         </LinearLayout>
 
     </LinearLayout>
