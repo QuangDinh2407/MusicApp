@@ -9,7 +9,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.bumptech.glide.Glide;
-import com.ck.music_app.Interface.OnSongClickListener;
+import com.ck.music_app.interfaces.OnSongClickListener;
 import com.ck.music_app.Model.Song;
 import com.ck.music_app.R;
 

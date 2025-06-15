@@ -7,7 +7,6 @@ import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.Toast;
 
-import com.ck.music_app.Fragment.MiniPlayerFragment;
 import com.ck.music_app.Fragment.PlayMusicFragment;
 import com.ck.music_app.MainFragment.HomeFragment;
 import com.ck.music_app.MainFragment.LibraryFragment;
@@ -29,19 +28,17 @@ import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import java.util.ArrayList;
 
-public class MainActivity extends AppCompatActivity implements MiniPlayerFragment.OnMiniPlayerClickListener {
+public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     private Fragment[] fragments;
     private ViewPager2 viewPager;
     private BottomNavigationView bottomNavigationView;
-    private MiniPlayerFragment miniPlayerFragment;
-    private Fragment currentPlayerFragment;
+    private PlayMusicFragment playerFragment;
     private Song currentSong;
     private List<Song> currentPlaylist;
     private int currentSongIndex = 0;
     private boolean isPlaying = false;
     private FirebaseFirestore db;
-    private View miniPlayerContainer;
     private View playerContainer;
 
     @Override
@@ -57,7 +54,6 @@ public class MainActivity extends AppCompatActivity implements MiniPlayerFragmen
         }
 
         FirebaseFirestore db = FirebaseFirestore.getInstance();
-        // Chạy test ngay khi khởi tạo
         testFirestoreUtils();
 
         // Khởi tạo các fragment chính
@@ -74,15 +70,7 @@ public class MainActivity extends AppCompatActivity implements MiniPlayerFragmen
         viewPager.setCurrentItem(0, false);
 
         bottomNavigationView = findViewById(R.id.bottom_navigation);
-        miniPlayerContainer = findViewById(R.id.mini_player_container);
         playerContainer = findViewById(R.id.player_container);
-
-        // Khởi tạo mini player
-        miniPlayerFragment = new MiniPlayerFragment();
-        miniPlayerFragment.setOnMiniPlayerClickListener(this);
-        getSupportFragmentManager().beginTransaction()
-                .replace(R.id.mini_player_container, miniPlayerFragment)
-                .commit();
 
         // Khi vuốt ViewPager2 thì đổi tab menu
         viewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
@@ -147,13 +135,11 @@ public class MainActivity extends AppCompatActivity implements MiniPlayerFragmen
         });
     }
 
-    public void showMiniPlayer(Song song) {
+    public void showPlayer(Song song) {
         currentSong = song;
-        // Nếu playlist chưa được khởi tạo, tạo mới với bài hát hiện tại
         if (currentPlaylist == null) {
             currentPlaylist = new ArrayList<>();
         }
-        // Nếu bài hát chưa có trong playlist, thêm vào
         if (!currentPlaylist.contains(song)) {
             currentPlaylist.add(song);
             currentSongIndex = currentPlaylist.size() - 1;
@@ -161,91 +147,29 @@ public class MainActivity extends AppCompatActivity implements MiniPlayerFragmen
             currentSongIndex = currentPlaylist.indexOf(song);
         }
         
-        miniPlayerFragment.updateSong(song);
-        miniPlayerFragment.updatePlayingState(true);
-
-        // Animation cho mini player
-        Animation slideUp = AnimationUtils.loadAnimation(this, R.anim.slide_up);
-        miniPlayerContainer.startAnimation(slideUp);
-        miniPlayerContainer.setVisibility(View.VISIBLE);
-        playerContainer.setVisibility(View.GONE);
+        showPlayer(currentPlaylist, currentSongIndex);
     }
 
-    public void showFullPlayer() {
-        if (currentSong != null && currentPlaylist != null) {
-            showFullPlayer(currentPlaylist, currentSongIndex);
-        }
-    }
-
-    public void showFullPlayer(List<Song> songList, int position) {
+    public void showPlayer(List<Song> songList, int position) {
         currentPlaylist = new ArrayList<>(songList);
         currentSongIndex = position;
         currentSong = songList.get(position);
 
-        // Tạo và hiển thị full player fragment với playlist và index
-        PlayMusicFragment playerFragment = PlayMusicFragment.newInstance(currentPlaylist, currentSongIndex);
-        getSupportFragmentManager().beginTransaction()
-                .setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN)
-                .replace(R.id.player_container, playerFragment)
-                .addToBackStack(null)
-                .commit();
-
-        // Animation cho full player
-        Animation slideUp = AnimationUtils.loadAnimation(this, R.anim.slide_up);
-        playerContainer.startAnimation(slideUp);
-        playerContainer.setVisibility(View.VISIBLE);
-        miniPlayerContainer.setVisibility(View.GONE);
-        currentPlayerFragment = playerFragment;
-    }
-
-    public void minimizePlayer() {
-        if (currentPlayerFragment != null) {
-            // Animation cho việc ẩn full player
-            Animation slideDown = AnimationUtils.loadAnimation(this, R.anim.slide_down);
-            slideDown.setAnimationListener(new Animation.AnimationListener() {
-                @Override
-                public void onAnimationStart(Animation animation) {}
-
-                @Override
-                public void onAnimationEnd(Animation animation) {
-                    playerContainer.setVisibility(View.GONE);
-                    // Chỉ remove PlayMusicFragment, không pop back stack
-                    getSupportFragmentManager()
-                        .beginTransaction()
-                        .remove(currentPlayerFragment)
-                        .commit();
-                    
-                    // Hiện mini player với animation
-                    Animation slideUp = AnimationUtils.loadAnimation(MainActivity.this, R.anim.slide_up);
-                    miniPlayerContainer.startAnimation(slideUp);
-                    miniPlayerContainer.setVisibility(View.VISIBLE);
-                }
-
-                @Override
-                public void onAnimationRepeat(Animation animation) {}
-            });
-            playerContainer.startAnimation(slideDown);
-        }
-    }
-
-    @Override
-    public void onMiniPlayerClicked() {
-        showFullPlayer();
-    }
-
-    @Override
-    public void onPlayPauseClicked() {
-        isPlaying = !isPlaying;
-        miniPlayerFragment.updatePlayingState(isPlaying);
-        if (currentPlayerFragment instanceof PlayMusicFragment) {
-            ((PlayMusicFragment) currentPlayerFragment).updatePlayingState(isPlaying);
+        if (playerFragment == null) {
+            playerFragment = PlayMusicFragment.newInstance(currentPlaylist, currentSongIndex);
+            getSupportFragmentManager().beginTransaction()
+                    .replace(R.id.player_container, playerFragment)
+                    .commit();
+            playerContainer.setVisibility(View.VISIBLE);
+        } else {
+            playerFragment.maximize();
         }
     }
 
     @Override
     public void onBackPressed() {
-        if (playerContainer.getVisibility() == View.VISIBLE) {
-            minimizePlayer();
+        if (playerFragment != null && playerContainer.getVisibility() == View.VISIBLE) {
+            playerFragment.minimize();
         } else {
             super.onBackPressed();
         }

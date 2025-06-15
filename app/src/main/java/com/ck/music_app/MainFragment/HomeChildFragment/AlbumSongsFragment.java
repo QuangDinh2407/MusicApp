@@ -15,7 +15,6 @@ import androidx.fragment.app.Fragment;
 
 import com.bumptech.glide.Glide;
 import com.ck.music_app.Adapter.SongAdapter;
-import com.ck.music_app.Interface.OnSongClickListener;
 import com.ck.music_app.MainActivity;
 import com.ck.music_app.Model.Song;
 import com.ck.music_app.R;
@@ -100,7 +99,7 @@ public class AlbumSongsFragment extends Fragment {
             SongAdapter adapter = new SongAdapter(requireContext(), songs);
             adapter.setOnSongClickListener((songList, position) -> {
                 if (getActivity() instanceof MainActivity) {
-                    ((MainActivity) getActivity()).showFullPlayer(songList, position);
+                    ((MainActivity) getActivity()).showPlayer(songList, position);
                 }
             });
             listView.setAdapter(adapter);

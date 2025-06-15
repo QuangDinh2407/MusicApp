@@ -1,4 +1,4 @@
-package com.ck.music_app.Interface;
+package com.ck.music_app.interfaces;
 
 import com.ck.music_app.Model.Song;
 import java.util.List;

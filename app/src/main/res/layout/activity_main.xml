@@ -24,9 +24,9 @@
 
         </FrameLayout>
 
-        <!-- Mini Player -->
+        <!-- Player Container -->
         <FrameLayout
-            android:id="@+id/mini_player_container"
+            android:id="@+id/player_container"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:visibility="gone"/>
@@ -41,14 +41,5 @@
             app:menu="@menu/bottom_nav_menu" />
 
     </LinearLayout>
-
-    <!-- Full Player (overlay trên toàn màn hình) -->
-    <FrameLayout
-        android:id="@+id/player_container"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:visibility="gone"
-        android:elevation="10dp"
-        android:background="@color/background"/>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
