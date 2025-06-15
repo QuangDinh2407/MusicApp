@@ -3,50 +3,49 @@ package com.ck.music_app;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.widget.Toast;
 
+import com.ck.music_app.Fragment.PlayMusicFragment;
 import com.ck.music_app.MainFragment.HomeFragment;
 import com.ck.music_app.MainFragment.LibraryFragment;
 import com.ck.music_app.MainFragment.ProfileFragment;
 import com.ck.music_app.MainFragment.SearchFragment;
+import com.ck.music_app.Model.Song;
 import com.ck.music_app.Viewpager.MainPagerAdapter;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentTransaction;
 import androidx.viewpager2.widget.ViewPager2;
-import com.ck.music_app.Model.Song;
 import com.ck.music_app.utils.FirestoreUtils;
 import java.util.List;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     private Fragment[] fragments;
     private ViewPager2 viewPager;
     private BottomNavigationView bottomNavigationView;
+    private PlayMusicFragment playerFragment;
+    private Song currentSong;
+    private List<Song> currentPlaylist;
+    private int currentSongIndex = 0;
+    private boolean isPlaying = false;
     private FirebaseFirestore db;
+    private View playerContainer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
-
-        // Thêm listener để theo dõi thay đổi back stack
-        getSupportFragmentManager().addOnBackStackChangedListener(() -> {
-            View fragmentContainer = findViewById(R.id.fragment_container);
-            View viewPager = findViewById(R.id.view_pager);
-            
-            if (getSupportFragmentManager().getBackStackEntryCount() == 0) {
-                // Nếu không còn fragment nào trong back stack
-                if (fragmentContainer != null) fragmentContainer.setVisibility(View.GONE);
-                if (viewPager != null) viewPager.setVisibility(View.VISIBLE);
-            }
-        });
 
         // Lấy email từ Intent và hiển thị Toast
         String email = getIntent().getStringExtra("email");
@@ -55,10 +54,9 @@ public class MainActivity extends AppCompatActivity {
         }
 
         FirebaseFirestore db = FirebaseFirestore.getInstance();
-        // Chạy test ngay khi khởi tạo
         testFirestoreUtils();
 
-        // Khởi tạo các fragment chỉ một lần
+        // Khởi tạo các fragment chính
         fragments = new Fragment[]{
                 new HomeFragment(),
                 new SearchFragment(),
@@ -70,9 +68,9 @@ public class MainActivity extends AppCompatActivity {
         MainPagerAdapter adapter = new MainPagerAdapter(this, fragments);
         viewPager.setAdapter(adapter);
         viewPager.setCurrentItem(0, false);
-        viewPager.setOffscreenPageLimit(2); // Giới hạn số lượng fragment được giữ trong bộ nhớ
 
         bottomNavigationView = findViewById(R.id.bottom_navigation);
+        playerContainer = findViewById(R.id.player_container);
 
         // Khi vuốt ViewPager2 thì đổi tab menu
         viewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
@@ -101,28 +99,6 @@ public class MainActivity extends AppCompatActivity {
             }
             return true;
         });
-
-    }
-
-    @Override
-    public void onBackPressed() {
-        View fragmentContainer = findViewById(R.id.fragment_container);
-        View viewPager = findViewById(R.id.view_pager);
-
-        if (fragmentContainer != null && fragmentContainer.getVisibility() == View.VISIBLE) {
-            // Nếu đang hiển thị fragment container
-            if (getSupportFragmentManager().getBackStackEntryCount() > 0) {
-                // Nếu còn fragment trong back stack
-                getSupportFragmentManager().popBackStack();
-            } else {
-                // Nếu không còn fragment nào, ẩn container và hiện ViewPager
-                fragmentContainer.setVisibility(View.GONE);
-                if (viewPager != null) viewPager.setVisibility(View.VISIBLE);
-            }
-        } else {
-            // Nếu đang ở ViewPager, xử lý back như bình thường
-            super.onBackPressed();
-        }
     }
 
     private void testFirestoreUtils() {
@@ -159,4 +135,43 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    public void showPlayer(Song song) {
+        currentSong = song;
+        if (currentPlaylist == null) {
+            currentPlaylist = new ArrayList<>();
+        }
+        if (!currentPlaylist.contains(song)) {
+            currentPlaylist.add(song);
+            currentSongIndex = currentPlaylist.size() - 1;
+        } else {
+            currentSongIndex = currentPlaylist.indexOf(song);
+        }
+        
+        showPlayer(currentPlaylist, currentSongIndex);
+    }
+
+    public void showPlayer(List<Song> songList, int position) {
+        currentPlaylist = new ArrayList<>(songList);
+        currentSongIndex = position;
+        currentSong = songList.get(position);
+
+        if (playerFragment == null) {
+            playerFragment = PlayMusicFragment.newInstance(currentPlaylist, currentSongIndex);
+            getSupportFragmentManager().beginTransaction()
+                    .replace(R.id.player_container, playerFragment)
+                    .commit();
+            playerContainer.setVisibility(View.VISIBLE);
+        } else {
+            playerFragment.maximize();
+        }
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (playerFragment != null && playerContainer.getVisibility() == View.VISIBLE) {
+            playerFragment.minimize();
+        } else {
+            super.onBackPressed();
+        }
+    }
 }

@@ -46,10 +46,6 @@
             android:exported="false" />
 
         <activity
-            android:name=".PlayMusicActivity"
-            android:exported="false" />
-
-        <activity
             android:name=".AlbumSongsActivity"
             android:exported="false" />
     </application>

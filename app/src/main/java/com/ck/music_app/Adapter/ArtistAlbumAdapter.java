@@ -1,7 +1,6 @@
 package com.ck.music_app.Adapter;
 
 import android.content.Context;
-import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,7 +10,6 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.bumptech.glide.Glide;
-import com.ck.music_app.AlbumSongsActivity;
 import com.ck.music_app.Model.Album;
 import com.ck.music_app.Model.ArtistWithAlbums;
 import com.ck.music_app.R;
@@ -21,6 +19,15 @@ import java.util.List;
 public class ArtistAlbumAdapter extends ArrayAdapter<ArtistWithAlbums> {
     private Context context;
     private List<ArtistWithAlbums> data;
+    private OnAlbumClickListener onAlbumClickListener;
+
+    public interface OnAlbumClickListener {
+        void onAlbumClick(Album album, com.ck.music_app.Model.Artist artist);
+    }
+
+    public void setOnAlbumClickListener(OnAlbumClickListener listener) {
+        this.onAlbumClickListener = listener;
+    }
 
     public ArtistAlbumAdapter(Context context, List<ArtistWithAlbums> data) {
         super(context, 0, data);
@@ -57,14 +64,10 @@ public class ArtistAlbumAdapter extends ArrayAdapter<ArtistWithAlbums> {
                     .into(imgAlbumCover);
 
             albumView.setOnClickListener(v -> {
-                Intent intent = new Intent(context, AlbumSongsActivity.class);
-                intent.putExtra("albumId", album.getId());
-                intent.putExtra("albumName", album.getTitle());
-                intent.putExtra("albumImage", album.getCoverUrl());
-                intent.putExtra("artistName", artistWithAlbums.getArtist().getName());
-                context.startActivity(intent);
+                if (onAlbumClickListener != null) {
+                    onAlbumClickListener.onAlbumClick(album, artistWithAlbums.getArtist());
+                }
             });
-            
 
             layoutAlbums.addView(albumView);
         }
