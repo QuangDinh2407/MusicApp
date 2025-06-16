@@ -3,12 +3,15 @@ package com.ck.music_app.MainFragment;
 import android.os.Bundle;
 
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
 
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
 import com.ck.music_app.R;
+import android.widget.ImageView;
+import com.bumptech.glide.Glide;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -61,6 +64,35 @@ public class ProfileFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_profile, container, false);
+        View view = inflater.inflate(R.layout.fragment_profile, container, false);
+
+        ImageView imgAvatar = view.findViewById(R.id.imgAvatar);
+        // Thay avatar.png bằng đường dẫn ảnh thực tế nếu có
+        Glide.with(this)
+                .load(R.drawable.cat_avatar)
+                .circleCrop()
+                .into(imgAvatar);
+
+        // Sự kiện click Đã tải
+        View llDownloaded = view.findViewById(R.id.llDownloaded);
+        llDownloaded.setOnClickListener(v -> {
+            // Ẩn ViewPager2 và hiện fragment container
+            View fragmentContainer = requireActivity().findViewById(R.id.fragment_container);
+            View viewPager = requireActivity().findViewById(R.id.view_pager);
+            fragmentContainer.setVisibility(View.VISIBLE);
+            if (viewPager != null) viewPager.setVisibility(View.GONE);
+
+            // Xóa tất cả các fragment trong back stack
+            requireActivity().getSupportFragmentManager().popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE);
+
+            // Thêm fragment mới
+            requireActivity().getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.fragment_container, new DownloadedFragment())
+                .addToBackStack(null)
+                .commit();
+        });
+
+        return view;
     }
 }

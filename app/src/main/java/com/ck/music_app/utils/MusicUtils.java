@@ -9,4 +9,16 @@ public class MusicUtils {
                 TimeUnit.MILLISECONDS.toSeconds(milliseconds) -
                         TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(milliseconds)));
     }
+
+    /**
+     * Loại bỏ dấu tiếng Việt khỏi chuỗi (normalize to ASCII, remove diacritics)
+     */
+    public static String removeVietnameseDiacritics(String input) {
+        if (input == null) return null;
+        String temp = java.text.Normalizer.normalize(input, java.text.Normalizer.Form.NFD);
+        temp = temp.replaceAll("\\p{InCombiningDiacriticalMarks}+", "");
+        // Xử lý riêng cho đ/Đ
+        temp = temp.replaceAll("đ", "d").replaceAll("Đ", "D");
+        return temp;
+    }
 } 
