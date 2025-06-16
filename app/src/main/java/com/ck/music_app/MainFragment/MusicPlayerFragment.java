@@ -189,7 +189,7 @@ public class MusicPlayerFragment extends Fragment {
         Intent intent = new Intent(requireContext(), MusicService.class);
         intent.setAction(MusicService.ACTION_PREVIOUS);
         requireContext().startService(intent);
-    }
+                    }
 
     private void playNext() {
         Intent intent = new Intent(requireContext(), MusicService.class);
@@ -406,7 +406,7 @@ public class MusicPlayerFragment extends Fragment {
         filter.addAction("MINIMIZE_PLAYER");
         filter.addAction(MusicService.BROADCAST_LOADING_STATE);
         broadcaster.registerReceiver(musicReceiver, filter);
-    }
+            }
 
     @Override
     public void onDestroy() {

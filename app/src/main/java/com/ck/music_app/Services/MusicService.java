@@ -3,7 +3,9 @@ package com.ck.music_app.Services;
 import android.app.Service;
 import android.content.Intent;
 import android.media.MediaPlayer;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 
 import androidx.annotation.Nullable;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
@@ -27,18 +29,22 @@ public class MusicService extends Service {
     public static final String BROADCAST_SONG_CHANGED = "com.ck.music_app.SONG_CHANGED";
     public static final String BROADCAST_PROGRESS = "com.ck.music_app.PROGRESS";
     public static final String BROADCAST_LOADING_STATE = "com.ck.music_app.LOADING_STATE";
+    public static final String BROADCAST_LYRIC_POSITION = "com.ck.music_app.LYRIC_POSITION";
 
     private MediaPlayer mediaPlayer;
     private List<Song> songList = new ArrayList<>();
     private int currentIndex = 0;
     private boolean isPlaying = false;
     private LocalBroadcastManager broadcaster;
+    private Handler lyricHandler;
+    private static final int LYRIC_UPDATE_INTERVAL = 100; // 100ms
 
     @Override
     public void onCreate() {
         super.onCreate();
         broadcaster = LocalBroadcastManager.getInstance(this);
         mediaPlayer = new MediaPlayer();
+        lyricHandler = new Handler(Looper.getMainLooper());
         
         mediaPlayer.setOnCompletionListener(mp -> {
             // Auto play next song when current song completes
@@ -114,6 +120,7 @@ public class MusicService extends Service {
             mediaPlayer.start();
             isPlaying = true;
             startProgressUpdates();
+            startLyricUpdates();
             broadcastPlayingState(true);
         }
     }
@@ -122,6 +129,7 @@ public class MusicService extends Service {
         if (mediaPlayer != null && mediaPlayer.isPlaying()) {
             mediaPlayer.pause();
             isPlaying = false;
+            stopLyricUpdates();
             broadcastPlayingState(false);
         }
     }
@@ -147,6 +155,7 @@ public class MusicService extends Service {
     }
 
     private void startProgressUpdates() {
+        // Cập nhật progress bar mỗi giây
         new Thread(() -> {
             while (isPlaying && mediaPlayer != null) {
                 try {
@@ -159,6 +168,34 @@ public class MusicService extends Service {
                 }
             }
         }).start();
+
+        // Cập nhật vị trí lyrics mỗi 100ms
+        startLyricUpdates();
+    }
+
+    private final Runnable lyricUpdateRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (mediaPlayer != null && mediaPlayer.isPlaying()) {
+                broadcastLyricPosition(mediaPlayer.getCurrentPosition());
+                lyricHandler.postDelayed(this, LYRIC_UPDATE_INTERVAL);
+            }
+        }
+    };
+
+    private void startLyricUpdates() {
+        lyricHandler.removeCallbacks(lyricUpdateRunnable);
+        lyricHandler.post(lyricUpdateRunnable);
+    }
+
+    private void stopLyricUpdates() {
+        lyricHandler.removeCallbacks(lyricUpdateRunnable);
+    }
+
+    private void broadcastLyricPosition(int position) {
+        Intent intent = new Intent(BROADCAST_LYRIC_POSITION);
+        intent.putExtra("position", position);
+        broadcaster.sendBroadcast(intent);
     }
 
     private void broadcastPlayingState(boolean playing) {
@@ -196,6 +233,7 @@ public class MusicService extends Service {
     public void onDestroy() {
         super.onDestroy();
         if (mediaPlayer != null) {
+            stopLyricUpdates();
             mediaPlayer.release();
             mediaPlayer = null;
         }
