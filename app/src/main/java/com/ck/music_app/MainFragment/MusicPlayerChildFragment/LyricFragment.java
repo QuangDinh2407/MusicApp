@@ -54,7 +54,6 @@ public class LyricFragment extends Fragment {
     private String mParam1;
     private String mParam2;
 
-    private View gradientOverlay;
     private RecyclerView rvLyrics;
     private TextView tvNoLyrics;
     private LyricAdapter lyricAdapter;
@@ -69,9 +68,8 @@ public class LyricFragment extends Fragment {
             if (intent.getAction() != null) {
                 switch (intent.getAction()) {
                     case "UPDATE_SONG_INFO":
-                        String coverUrl = intent.getStringExtra("COVER_URL");
                         String lyric = intent.getStringExtra("LYRIC");
-                        updateUI(coverUrl, lyric);
+                        updateUI(lyric);
                         break;
                     case MusicService.BROADCAST_LYRIC_POSITION:
                         int position = intent.getIntExtra("position", 0);
@@ -128,16 +126,15 @@ public class LyricFragment extends Fragment {
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                           Bundle savedInstanceState) {
+                             Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_lyric, container, false);
-        gradientOverlay = view.findViewById(R.id.gradientOverlay);
         rvLyrics = view.findViewById(R.id.rvLyrics);
         tvNoLyrics = view.findViewById(R.id.tvNoLyrics);
         
         setupRecyclerView();
         
         if (songList != null && currentIndex >= 0 && currentIndex < songList.size()) {
-            updateUI(songList.get(currentIndex).getCoverUrl(), songList.get(currentIndex).getLyrics());
+            updateUI(songList.get(currentIndex).getLyrics());
         }
         
         return view;
@@ -148,11 +145,6 @@ public class LyricFragment extends Fragment {
         rvLyrics.setAdapter(lyricAdapter);
         LinearLayoutManager layoutManager = new LinearLayoutManager(requireContext());
         rvLyrics.setLayoutManager(layoutManager);
-        
-        // Thêm padding để dòng đầu tiên không bị khuất
-        int paddingTop = getResources().getDimensionPixelSize(R.dimen.lyric_padding_top);
-        int paddingBottom = getResources().getDimensionPixelSize(R.dimen.lyric_padding_bottom);
-        rvLyrics.setPadding(0, paddingTop, 0, paddingBottom);
         rvLyrics.setClipToPadding(false);
     }
 
@@ -172,23 +164,7 @@ public class LyricFragment extends Fragment {
         broadcastManager.unregisterReceiver(songUpdateReceiver);
     }
 
-    private void updateUI(String coverUrl, String lyric) {
-        if (coverUrl != null) {
-            Glide.with(this)
-                    .asBitmap()
-                    .load(coverUrl)
-                    .into(new CustomTarget<Bitmap>() {
-                        @Override
-                        public void onResourceReady(Bitmap resource, Transition<? super Bitmap> transition) {
-                            if (isAdded()) {
-                                GradientUtils.createGradientFromBitmap(resource, gradientOverlay);
-                            }
-                        }
-
-                        @Override
-                        public void onLoadCleared(Drawable placeholder) {}
-                    });
-        }
+    private void updateUI(String lyric) {
 
         if (lyric != null) {
             List<LyricLine> lyricLines = parseLyrics(lyric);

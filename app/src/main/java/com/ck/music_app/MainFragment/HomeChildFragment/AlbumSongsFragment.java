@@ -172,7 +172,7 @@ public class AlbumSongsFragment extends Fragment implements OnSongClickListener 
 
         // Hiển thị player fragment
         if (getActivity() instanceof MainActivity) {
-            ((MainActivity) getActivity()).showPlayer(songList, position);
+            ((MainActivity) getActivity()).showPlayer(songList, position, albumName);
         }
     }
-} 
+}   

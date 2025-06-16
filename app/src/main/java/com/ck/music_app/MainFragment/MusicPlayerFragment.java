@@ -47,17 +47,20 @@ public class MusicPlayerFragment extends Fragment {
     private View rootLayout;
     private View fullPlayerLayout;
     private View miniPlayerLayout;
+
+    private View topLayout;
     private ImageView imgMiniCover;
     private ImageView imgMiniVinyl;
-    private TextView tvMiniTitle, tvMiniArtist;
-    private ImageButton btnMiniPlayPause, btnMiniPrevious, btnMiniNext;
-    private View miniGradientOverlay;
+    private TextView tvMiniTitle, tvMiniArtist, tvAlbumName;
+    private ImageButton btnMiniPlayPause, btnMiniPrevious, btnMiniNext, btnBack;
+    private View miniGradientOverlay, gradientOverlay;
     private LoadingDialog loadingDialog;
 
     private Fragment[] fragments;
     private ViewPager2 viewPager;
     private List<Song> songList = new ArrayList<>();
     private int currentIndex;
+    private String albumName;
     private boolean isPlaying = false;
     private float currentRotating = 0f;
     private boolean isVinylRotating = false;
@@ -83,18 +86,16 @@ public class MusicPlayerFragment extends Fragment {
                     boolean isLoading = intent.getBooleanExtra("isLoading", false);
                     updateLoadingState(isLoading);
                     break;
-                case "MINIMIZE_PLAYER":
-                    minimize();
-                    break;
             }
         }
     };
 
-    public static MusicPlayerFragment newInstance(List<Song> songs, int currentIndex) {
+    public static MusicPlayerFragment newInstance(List<Song> songs, int currentIndex, String albumName) {
         MusicPlayerFragment fragment = new MusicPlayerFragment();
         Bundle args = new Bundle();
         args.putSerializable("songList", new ArrayList<>(songs));
         args.putInt("currentIndex", currentIndex);
+        args.putString("albumName", albumName);
         fragment.setArguments(args);
         return fragment;
     }
@@ -105,6 +106,7 @@ public class MusicPlayerFragment extends Fragment {
         if (getArguments() != null) {
             songList = (List<Song>) getArguments().getSerializable("songList");
             currentIndex = getArguments().getInt("currentIndex", 0);
+            albumName = getArguments().getString("albumName", "Unknown Album");
         }
         broadcaster = LocalBroadcastManager.getInstance(requireContext());
         loadingDialog = new LoadingDialog(requireContext());
@@ -118,6 +120,9 @@ public class MusicPlayerFragment extends Fragment {
         initViews(view);
         setupViewTreeObserver();
         initListeners();
+
+        // Set album name
+        tvAlbumName.setText(albumName);
 
         fragments = new Fragment[]{
                 PlayMusicFragment.newInstance(songList, currentIndex),
@@ -141,15 +146,19 @@ public class MusicPlayerFragment extends Fragment {
 
     private void initViews(View view) {
         rootLayout = view.findViewById(R.id.root_layout);
+        topLayout = view.findViewById(R.id.top_layout);
         fullPlayerLayout = view.findViewById(R.id.fragment_container);
         miniPlayerLayout = view.findViewById(R.id.mini_player_layout);
         imgMiniVinyl = view.findViewById(R.id.imgMiniVinyl);
         imgMiniCover = view.findViewById(R.id.imgMiniCover);
         tvMiniTitle = view.findViewById(R.id.tvMiniTitle);
         tvMiniArtist = view.findViewById(R.id.tvMiniArtist);
+        tvAlbumName = view.findViewById(R.id.tvAlbumName);
         btnMiniPlayPause = view.findViewById(R.id.btnMiniPlayPause);
         btnMiniPrevious = view.findViewById(R.id.btnMiniPrevious);
         btnMiniNext = view.findViewById(R.id.btnMiniNext);
+        btnBack = view.findViewById(R.id.btnBack);
+        gradientOverlay = view.findViewById(R.id.gradientOverlay);
         miniGradientOverlay = view.findViewById(R.id.miniGradientOverlay);
     }
 
@@ -175,6 +184,7 @@ public class MusicPlayerFragment extends Fragment {
         btnMiniPlayPause.setOnClickListener(v -> togglePlayPause());
         btnMiniPrevious.setOnClickListener(v -> playPrevious());
         btnMiniNext.setOnClickListener(v -> playNext());
+        btnBack.setOnClickListener(v -> minimize());
     }
 
     private void updateLoadingState(boolean isLoading) {
@@ -246,6 +256,7 @@ public class MusicPlayerFragment extends Fragment {
             @Override
             public void onAnimationEnd(Animator animation) {
                 fullPlayerLayout.setVisibility(View.GONE);
+                topLayout.setVisibility(View.GONE);
                 fullPlayerLayout.setTranslationY(0);
             }
 
@@ -295,6 +306,7 @@ public class MusicPlayerFragment extends Fragment {
             @Override
             public void onAnimationStart(Animator animation) {
                 fullPlayerLayout.setVisibility(View.VISIBLE);
+                topLayout.setVisibility(View.VISIBLE);
             }
 
             @Override
@@ -329,11 +341,18 @@ public class MusicPlayerFragment extends Fragment {
                     @Override
                     public void onResourceReady(Bitmap resource, Transition<? super Bitmap> transition) {
                         GradientUtils.createGradientFromBitmap(resource, miniGradientOverlay);
+                        GradientUtils.createGradientFromBitmap(resource, gradientOverlay);
                     }
 
                     @Override
                     public void onLoadCleared(Drawable placeholder) {}
                 });
+    }
+
+    private void updateCurrentSong(int position) {
+        currentIndex = position;
+        Song song = songList.get(position);
+        updateMiniPlayer(song);
     }
 
     private void updatePlayingState(boolean playing) {
@@ -348,11 +367,6 @@ public class MusicPlayerFragment extends Fragment {
             stopVinylRotation(imgMiniVinyl);
             stopCoverRotation();
         }
-    }
-
-    private void updateCurrentSong(int position) {
-        currentIndex = position;
-        updateMiniPlayer(songList.get(position));
     }
 
     private void startVinylRotation(ImageView vinyl) {
@@ -403,10 +417,9 @@ public class MusicPlayerFragment extends Fragment {
         IntentFilter filter = new IntentFilter();
         filter.addAction(MusicService.BROADCAST_PLAYING_STATE);
         filter.addAction(MusicService.BROADCAST_SONG_CHANGED);
-        filter.addAction("MINIMIZE_PLAYER");
         filter.addAction(MusicService.BROADCAST_LOADING_STATE);
         broadcaster.registerReceiver(musicReceiver, filter);
-            }
+    }
 
     @Override
     public void onDestroy() {
@@ -422,5 +435,28 @@ public class MusicPlayerFragment extends Fragment {
 
     public int getCurrentIndex() {
         return currentIndex;
+    }
+
+    public void updateAlbumName(String newAlbumName) {
+        this.albumName = newAlbumName;
+        if (tvAlbumName != null) {
+            tvAlbumName.setText(newAlbumName);
+        }
+    }
+
+    public void updatePlayerInfo(List<Song> newSongList, int newIndex) {
+        // Cập nhật danh sách và vị trí bài hát
+        this.songList = new ArrayList<>(newSongList);
+        this.currentIndex = newIndex;
+
+        // Cập nhật giao diện
+        Song song = songList.get(currentIndex);
+        updateMiniPlayer(song);
+
+        // Cập nhật PlayMusicFragment nếu đang hiển thị
+        if (fragments != null && fragments.length > 0 && fragments[0] instanceof PlayMusicFragment) {
+            PlayMusicFragment playMusicFragment = (PlayMusicFragment) fragments[0];
+            playMusicFragment.updateSongList(songList, currentIndex);
+        }
     }
 } 

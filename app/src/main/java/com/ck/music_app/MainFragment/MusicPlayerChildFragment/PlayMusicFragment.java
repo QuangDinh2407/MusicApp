@@ -55,8 +55,8 @@ public class PlayMusicFragment extends Fragment {
     private ImageView imgVinyl, imgCover;
     private TextView tvTitle, tvArtist, tvCurrentTime, tvTotalTime;
     private SeekBar seekBar;
-    private ImageButton btnPlayPause, btnBack, btnPrevious, btnNext;
-    private View gradientOverlay;
+    private ImageButton btnPlayPause, btnPrevious, btnNext;
+
     private LoadingDialog loadingDialog;
 
     private List<Song> songList = new ArrayList<>();
@@ -136,19 +136,12 @@ public class PlayMusicFragment extends Fragment {
         tvTotalTime = view.findViewById(R.id.tvTotalTime);
         seekBar = view.findViewById(R.id.seekBar);
         btnPlayPause = view.findViewById(R.id.btnPlayPause);
-        btnBack = view.findViewById(R.id.btnBack);
         btnPrevious = view.findViewById(R.id.btnPrevious);
         btnNext = view.findViewById(R.id.btnNext);
-        gradientOverlay = view.findViewById(R.id.gradientOverlay);
     }
 
     private void initListeners() {
         btnPlayPause.setOnClickListener(v -> togglePlayPause());
-        btnBack.setOnClickListener(v -> {
-            // Gửi broadcast để thông báo minimize
-            Intent intent = new Intent("MINIMIZE_PLAYER");
-            broadcaster.sendBroadcast(intent);
-        });
         btnPrevious.setOnClickListener(v -> playPrevious());
         btnNext.setOnClickListener(v -> playNext());
 
@@ -260,19 +253,7 @@ public class PlayMusicFragment extends Fragment {
         intent.putExtra("position", index);
         requireContext().startService(intent);
 
-        // Apply gradient
-        Glide.with(this)
-                .asBitmap()
-                .load(song.getCoverUrl())
-                .into(new CustomTarget<Bitmap>() {
-                    @Override
-                    public void onResourceReady(Bitmap resource, Transition<? super Bitmap> transition) {
-                        GradientUtils.createGradientFromBitmap(resource, gradientOverlay);
-                    }
 
-                    @Override
-                    public void onLoadCleared(Drawable placeholder) {}
-                });
     }
 
     private void updateLoadingState(boolean isLoading) {
@@ -326,18 +307,7 @@ public class PlayMusicFragment extends Fragment {
                 .circleCrop()
                 .into(imgCover);
 
-        Glide.with(this)
-                .asBitmap()
-                .load(song.getCoverUrl())
-                .into(new CustomTarget<Bitmap>() {
-                    @Override
-                    public void onResourceReady(Bitmap resource, Transition<? super Bitmap> transition) {
-                        GradientUtils.createGradientFromBitmap(resource, gradientOverlay);
-                    }
 
-                    @Override
-                    public void onLoadCleared(Drawable placeholder) {}
-                });
     }
 
     private void playPrevious() {
@@ -359,6 +329,12 @@ public class PlayMusicFragment extends Fragment {
         filter.addAction(MusicService.BROADCAST_PROGRESS);
         filter.addAction(MusicService.BROADCAST_LOADING_STATE);
         broadcaster.registerReceiver(musicReceiver, filter);
+    }
+
+    public void updateSongList(List<Song> newSongList, int newIndex) {
+        this.songList = new ArrayList<>(newSongList);
+        this.currentIndex = newIndex;
+        loadSong(currentIndex);
     }
 
     @Override
