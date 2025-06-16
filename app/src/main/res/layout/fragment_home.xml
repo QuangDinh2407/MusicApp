@@ -13,7 +13,7 @@
         android:layout_height="match_parent"
         android:divider="@android:color/transparent"
         android:dividerHeight="16dp"
-        android:padding="16dp"/>
+        android:padding="10dp"/>
 
     <FrameLayout
         android:id="@+id/home_fragment_container"
