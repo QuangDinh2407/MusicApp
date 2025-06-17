@@ -4,11 +4,13 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
+import com.ck.music_app.Auth.LoginActivity;
 import com.ck.music_app.MainFragment.MusicPlayerFragment;
 import com.ck.music_app.MainFragment.HomeFragment;
 import com.ck.music_app.MainFragment.LibraryFragment;
@@ -25,10 +27,13 @@ import androidx.fragment.app.Fragment;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.viewpager2.widget.ViewPager2;
 import com.ck.music_app.utils.FirestoreUtils;
+
+import java.util.ArrayList;
 import java.util.List;
 
-import com.google.firebase.firestore.FirebaseFirestore;
-import java.util.ArrayList;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.ck.music_app.Services.InternetService;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
@@ -40,8 +45,15 @@ public class MainActivity extends AppCompatActivity {
     private int currentSongIndex;
     private Song currentSong;
     private boolean isPlaying = false;
-    private FirebaseFirestore db;
+    private FirebaseAuth auth;
+    private SharedPreferences sharedPreferences;
+    private static final String PREF_NAME = "LoginPrefs";
+    private static final String KEY_REMEMBER = "remember";
+    private static final String KEY_EMAIL = "email";
+    private static final String KEY_PASSWORD = "password";
+    private boolean isOfflineMode = false;
     private View playerContainer;
+    private boolean isHandlingConnection = false;
 
     private final BroadcastReceiver playerReceiver = new BroadcastReceiver() {
         @Override
@@ -55,11 +67,28 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+    private final BroadcastReceiver internetReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent.getAction().equals(InternetService.BROADCAST_INTERNET_STATE)) {
+                boolean isConnected = intent.getBooleanExtra("isConnected", false);
+                handleInternetStateChange(isConnected);
+            }
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
+
+        // Khởi tạo Firebase Auth và SharedPreferences
+        auth = FirebaseAuth.getInstance();
+        sharedPreferences = getSharedPreferences(PREF_NAME, MODE_PRIVATE);
+        
+        // Kiểm tra xem có đang ở chế độ offline không
+        isOfflineMode = getIntent().getBooleanExtra("openDownloadFragment", false);
 
         // Khởi tạo các fragment chính
         fragments = new Fragment[]{
@@ -76,8 +105,7 @@ public class MainActivity extends AppCompatActivity {
         // Đảm bảo adapter được set trước khi chuyển trang
         viewPager.post(() -> {
             // Kiểm tra xem có yêu cầu mở fragment download không
-            boolean openDownloadFragment = getIntent().getBooleanExtra("openDownloadFragment", false);
-            if (openDownloadFragment) {
+            if (isOfflineMode) {
                 viewPager.setCurrentItem(3, false); // Chuyển đến Profile Fragment (index 3)
                 bottomNavigationView.setSelectedItemId(R.id.nav_profile); // Cập nhật bottom navigation
                 // Gửi broadcast để mở fragment download
@@ -122,13 +150,18 @@ public class MainActivity extends AppCompatActivity {
         // Đăng ký broadcast receiver
         IntentFilter filter = new IntentFilter("SHOW_PLAYER");
         LocalBroadcastManager.getInstance(this).registerReceiver(playerReceiver, filter);
+
+        // Đăng ký broadcast receiver cho internet state
+        IntentFilter internetFilter = new IntentFilter(InternetService.BROADCAST_INTERNET_STATE);
+        LocalBroadcastManager.getInstance(this).registerReceiver(internetReceiver, internetFilter);
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        // Hủy đăng ký broadcast receiver
+        // Hủy đăng ký tất cả broadcast receivers
         LocalBroadcastManager.getInstance(this).unregisterReceiver(playerReceiver);
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(internetReceiver);
     }
 
     @Override
@@ -215,6 +248,47 @@ public class MainActivity extends AppCompatActivity {
             musicplayerFragment.minimize();
         } else {
             super.onBackPressed();
+        }
+    }
+
+    private void handleInternetStateChange(boolean isConnected) {
+        if (isConnected && isOfflineMode && !isHandlingConnection) {
+            isHandlingConnection = true;
+
+            // Nếu có internet và đang ở chế độ offline
+            boolean isRemembered = sharedPreferences.getBoolean(KEY_REMEMBER, false);
+            String savedEmail = sharedPreferences.getString(KEY_EMAIL, "");
+            String savedPassword = sharedPreferences.getString(KEY_PASSWORD, "");
+
+            if (isRemembered && !savedEmail.isEmpty() && !savedPassword.isEmpty()) {
+                // Có thông tin đăng nhập đã lưu, thử tự động đăng nhập
+                auth.signInWithEmailAndPassword(savedEmail, savedPassword)
+                    .addOnCompleteListener(this, task -> {
+                        if (task.isSuccessful()) {
+                            // Đăng nhập thành công, cập nhật UI
+                            isOfflineMode = false;
+                            // Có thể thêm logic cập nhật UI ở đây
+                            Toast.makeText(this,
+                                    "Đăng nhập thành công.",
+                                    Toast.LENGTH_LONG).show();
+                        } else {
+                            // Đăng nhập thất bại, chuyển về màn login
+                            SharedPreferences.Editor editor = sharedPreferences.edit();
+                            editor.clear();
+                            editor.apply();
+                            Intent intent = new Intent(this, LoginActivity.class);
+                            startActivity(intent);
+                            finish();
+                        }
+                        isHandlingConnection = false;
+                    });
+            } else {
+                // Không có thông tin đăng nhập, chuyển về màn login
+                Intent intent = new Intent(this, LoginActivity.class);
+                startActivity(intent);
+                finish();
+                isHandlingConnection = false;
+            }
         }
     }
 }

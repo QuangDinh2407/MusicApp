@@ -17,6 +17,7 @@ public class FirebaseService {
     private static final String ALBUMS_COLLECTION = "albums";
     private static final String PLAYLISTS_COLLECTION = "playlists";
     private static final String USERS_COLLECTION = "users";
+    private static final String ARTISTS_COLLECTION = "artists";
 
     private static FirebaseService instance;
     private final FirebaseAuth mAuth;
@@ -250,6 +251,32 @@ public class FirebaseService {
                         }
                     });
         }
+    }
+
+    // Artist methods
+    public void getArtistNameById(String artistId, FirestoreCallback<String> callback) {
+        Log.d(TAG, "Bắt đầu lấy thông tin nghệ sĩ: " + artistId);
+        db.collection(ARTISTS_COLLECTION)
+                .document(artistId)
+                .get()
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful() && task.getResult() != null) {
+                        DocumentSnapshot document = task.getResult();
+                        if (document.exists()) {
+                            String artistName = document.getString("name");
+                            if (artistName != null && !artistName.isEmpty()) {
+                                callback.onSuccess(artistName);
+                            } else {
+                                callback.onError(new Exception("Không tìm thấy tên nghệ sĩ"));
+                            }
+                        } else {
+                            callback.onError(new Exception("Không tìm thấy nghệ sĩ với ID: " + artistId));
+                        }
+                    } else {
+                        Log.e(TAG, "Lỗi khi lấy thông tin nghệ sĩ", task.getException());
+                        callback.onError(task.getException());
+                    }
+                });
     }
 
     // Callback interfaces

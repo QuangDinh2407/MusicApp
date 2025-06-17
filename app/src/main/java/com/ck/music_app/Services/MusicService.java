@@ -88,8 +88,27 @@ public class MusicService extends Service {
             switch (intent.getAction()) {
                 case ACTION_PLAY:
                     if (intent.hasExtra("songList") && intent.hasExtra("position")) {
-                        songList = (List<Song>) intent.getSerializableExtra("songList");
-                        currentIndex = intent.getIntExtra("position", 0);
+                        List<Song> newSongList = (List<Song>) intent.getSerializableExtra("songList");
+                        int position = intent.getIntExtra("position", 0);
+                        
+                        // Lưu danh sách gốc mới
+                        originalSongList = new ArrayList<>(newSongList);
+                        
+                        // Nếu đang bật shuffle, shuffle danh sách mới ngay lập tức
+                        if (isShuffleOn) {
+                            songList = new ArrayList<>();
+                            // Đặt bài hát được chọn lên đầu
+                            songList.add(newSongList.get(position));
+                            // Shuffle phần còn lại
+                            List<Song> remainingSongs = new ArrayList<>(newSongList);
+                            remainingSongs.remove(position);
+                            Collections.shuffle(remainingSongs);
+                            songList.addAll(remainingSongs);
+                            currentIndex = 0; // Vì bài hát được chọn luôn ở vị trí đầu
+                        } else {
+                            songList = new ArrayList<>(newSongList);
+                            currentIndex = position;
+                        }
                         playSong(currentIndex);
                     } else {
                         resumeMusic();
@@ -259,67 +278,53 @@ public class MusicService extends Service {
         }
     }
 
-    private void handleShuffleMode(boolean isShuffleOn) {
-        this.isShuffleOn = isShuffleOn;
-        
-        Song currentSong = songList.get(currentIndex);
-        
-        if (isShuffleOn) {
-            // Lưu danh sách gốc nếu chưa có
-            if (originalSongList.isEmpty()) {
-                originalSongList = new ArrayList<>(songList);
+    private void handleShuffleMode(boolean shuffleOn) {
+        if (shuffleOn != isShuffleOn) {
+            isShuffleOn = shuffleOn;
+            if (isShuffleOn) {
+                // Lấy bài hát hiện tại
+                Song currentSong = songList.get(currentIndex);
+                
+                // Tạo danh sách shuffle mới
+                songList = new ArrayList<>();
+                songList.add(currentSong); // Đặt bài hát hiện tại lên đầu
+                
+                // Shuffle phần còn lại của danh sách
+                List<Song> remainingSongs = new ArrayList<>(originalSongList);
+                remainingSongs.remove(originalSongList.indexOf(currentSong));
+                Collections.shuffle(remainingSongs);
+                songList.addAll(remainingSongs);
+                
+                currentIndex = 0; // Vì bài hát hiện tại luôn ở vị trí đầu
+            } else {
+                // Khôi phục lại danh sách gốc
+                if (!originalSongList.isEmpty()) {
+                    // Lấy bài hát hiện tại
+                    Song currentSong = songList.get(currentIndex);
+                    // Tìm vị trí của bài hát trong danh sách gốc
+                    int originalIndex = -1;
+                    for (int i = 0; i < originalSongList.size(); i++) {
+                        if (originalSongList.get(i).getSongId().equals(currentSong.getSongId())) {
+                            originalIndex = i;
+                            break;
+                        }
+                    }
+                    // Nếu không tìm thấy, giữ nguyên vị trí hiện tại
+                    if (originalIndex == -1) {
+                        originalIndex = Math.min(currentIndex, originalSongList.size() - 1);
+                    }
+                    songList = new ArrayList<>(originalSongList);
+                    currentIndex = originalIndex;
+                }
             }
-            
-            // Tạo và xáo trộn danh sách mới
-            List<Song> shuffledList = new ArrayList<>(songList);
-            Collections.shuffle(shuffledList);
-            
-            // Đảm bảo bài hát hiện tại vẫn ở vị trí currentIndex
-            shuffledList.remove(currentSong);
-            shuffledList.add(currentIndex, currentSong);
-            
-            // Cập nhật danh sách phát
-            songList = shuffledList;
-        } else {
-            // Khôi phục lại danh sách gốc
-            if (!originalSongList.isEmpty()) {
-                songList = new ArrayList<>(originalSongList);
-                // Tìm vị trí mới của bài hát hiện tại trong danh sách gốc
-                currentIndex = songList.indexOf(currentSong);
-            }
+            broadcastPlaylistChanged();
         }
-
-        // Broadcast playlist changed
-        broadcastPlaylistChanged();
-
     }
 
-    private void handleRepeatMode(int repeatMode) {
-        this.repeatMode = repeatMode;
-
-        // Cập nhật MediaPlayer completion listener dựa trên chế độ lặp lại
-        mediaPlayer.setOnCompletionListener(mp -> {
-            switch (repeatMode) {
-                case 0: // Không lặp lại
-                    if (currentIndex < songList.size() - 1) {
-                        playNext();
-                    } else {
-                        // Dừng phát nhạc khi hết danh sách
-                        pauseMusic();
-                        seekTo(0);
-                    }
-                    break;
-
-                case 1: // Lặp lại tất cả
-                    playNext();
-                    break;
-
-                case 2: // Lặp lại một bài
-                    // Phát lại bài hiện tại
-                    playSong(currentIndex);
-                    break;
-            }
-        });
+    private void handleRepeatMode(int newRepeatMode) {
+        if (newRepeatMode >= 0 && newRepeatMode <= 2) {
+            repeatMode = newRepeatMode;
+        }
     }
 
     private void startProgressUpdates() {

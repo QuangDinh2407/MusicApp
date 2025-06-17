@@ -416,54 +416,26 @@ public class LoginActivity extends AppCompatActivity {
                 "Không có kết nối internet - Chuyển sang chế độ offline", 
                 Toast.LENGTH_SHORT).show();
                 
-            // Khi không có kết nối internet, chuyển đến MainActivity với flag để mở fragment download
             Intent intent = new Intent(LoginActivity.this, MainActivity.class);
             intent.putExtra("openDownloadFragment", true);
             startActivity(intent);
             finish();
         } else {
-            Toast.makeText(LoginActivity.this, 
-                "Đã kết nối internet - Kiểm tra trạng thái đăng nhập", 
-                Toast.LENGTH_SHORT).show();
-                
-            // Khi có kết nối internet, kiểm tra xem đã đăng nhập chưa
-            FirebaseUser currentUser = auth.getCurrentUser();
-            if (currentUser != null) {
-                Toast.makeText(LoginActivity.this, 
-                    "Đã đăng nhập với tài khoản: " + currentUser.getEmail(), 
-                    Toast.LENGTH_SHORT).show();
-                    
-                // Nếu đã đăng nhập, tiếp tục vào MainActivity
-                Intent intent = new Intent(LoginActivity.this, MainActivity.class);
-                startActivity(intent);
-                finish();
-            } else {
-                // Nếu chưa đăng nhập, thử tự động đăng nhập
-                handleAutoLogin();
-            }
-        }
-    }
-
-    private void handleAutoLogin() {
-        boolean isRemembered = sharedPreferences.getBoolean(KEY_REMEMBER, false);
-        if (isRemembered) {
+            // Kiểm tra thông tin đăng nhập đã lưu
+            boolean isRemembered = sharedPreferences.getBoolean(KEY_REMEMBER, false);
             String savedEmail = sharedPreferences.getString(KEY_EMAIL, "");
             String savedPassword = sharedPreferences.getString(KEY_PASSWORD, "");
-            
-            if (!savedEmail.isEmpty() && !savedPassword.isEmpty()) {
-                Toast.makeText(LoginActivity.this, 
-                    "Đang thử tự động đăng nhập với email: " + savedEmail, 
-                    Toast.LENGTH_SHORT).show();
-                    
+
+            if (isRemembered && !savedEmail.isEmpty() && !savedPassword.isEmpty()) {
+                // Nếu có thông tin đăng nhập đã lưu, thử tự động đăng nhập
                 showLoading();
                 auth.signInWithEmailAndPassword(savedEmail, savedPassword)
                     .addOnCompleteListener(this, task -> {
                         hideLoading();
                         if (task.isSuccessful()) {
                             Toast.makeText(LoginActivity.this, 
-                                "Tự động đăng nhập thành công!", 
+                                "Đã đăng nhập tự động", 
                                 Toast.LENGTH_SHORT).show();
-                                
                             FirebaseUser user = auth.getCurrentUser();
                             createUserIfNotExists(user);
                             Intent intent = new Intent(LoginActivity.this, MainActivity.class);
@@ -471,7 +443,7 @@ public class LoginActivity extends AppCompatActivity {
                             startActivity(intent);
                             finish();
                         } else {
-                            // Nếu tự động đăng nhập thất bại, xóa thông tin đăng nhập đã lưu
+                            // Nếu tự động đăng nhập thất bại, xóa thông tin đã lưu
                             SharedPreferences.Editor editor = sharedPreferences.edit();
                             editor.clear();
                             editor.apply();
@@ -483,13 +455,9 @@ public class LoginActivity extends AppCompatActivity {
                     });
             } else {
                 Toast.makeText(LoginActivity.this, 
-                    "Không tìm thấy thông tin đăng nhập đã lưu", 
+                    "Vui lòng đăng nhập để tiếp tục", 
                     Toast.LENGTH_SHORT).show();
             }
-        } else {
-            Toast.makeText(LoginActivity.this, 
-                "Chưa bật chức năng ghi nhớ đăng nhập", 
-                Toast.LENGTH_SHORT).show();
         }
     }
 

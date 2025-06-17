@@ -1,6 +1,7 @@
 package com.ck.music_app.MainFragment.HomeChildFragment;
 
 import android.content.Intent;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -15,6 +16,7 @@ import androidx.fragment.app.Fragment;
 import androidx.appcompat.widget.Toolbar;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
 
 import com.ck.music_app.interfaces.OnSongClickListener;
 import com.google.android.material.appbar.CollapsingToolbarLayout;
@@ -34,6 +36,7 @@ public class AlbumSongsFragment extends Fragment implements OnSongClickListener 
     private List<Song> songs;
     private String albumName;
     private String coverUrl;
+    private String artistName;
     private ImageView imgAlbumCover, imgBackground;
     private ImageButton btnBack;
     private CollapsingToolbarLayout collapsingToolbar;
@@ -61,12 +64,13 @@ public class AlbumSongsFragment extends Fragment implements OnSongClickListener 
         }
     }
 
-    public static AlbumSongsFragment newInstance(List<Song> songs, String albumName, String coverUrl) {
+    public static AlbumSongsFragment newInstance(List<Song> songs, String albumName, String coverUrl, String artistName) {
         AlbumSongsFragment fragment = new AlbumSongsFragment();
         Bundle args = new Bundle();
         args.putSerializable("songs", new ArrayList<>(songs));
         args.putString("albumName", albumName);
         args.putString("coverUrl", coverUrl);
+        args.putString("artistName", artistName);
         fragment.setArguments(args);
         return fragment;
     }
@@ -78,6 +82,8 @@ public class AlbumSongsFragment extends Fragment implements OnSongClickListener 
             songs = (List<Song>) getArguments().getSerializable("songs");
             albumName = getArguments().getString("albumName");
             coverUrl = getArguments().getString("coverUrl");
+            artistName = getArguments().getString("artistName");
+
         }
     }
 
@@ -103,7 +109,39 @@ public class AlbumSongsFragment extends Fragment implements OnSongClickListener 
         // Set up collapsing toolbar
         collapsingToolbar.setTitle("");  // Empty title initially
         tvAlbumTitle.setText(albumName);
-        tvArtistName.setText("Various Artists"); // You can set this dynamically
+
+        // Hiển thị ảnh album
+        if (coverUrl != null && !coverUrl.isEmpty()) {
+            Glide.with(this)
+                .load(coverUrl)
+                .placeholder(R.drawable.default_album_art)
+                .error(R.drawable.default_album_art)
+                .into(imgAlbumCover);
+
+            Glide.with(this)
+                    .load(coverUrl)
+                    .placeholder(R.drawable.default_album_art)
+                    .error(R.drawable.default_album_art)
+                    .into(imgBackground);
+        } else {
+            // Nếu không có ảnh bìa, hiển thị ảnh mặc định
+            imgAlbumCover.setImageResource(R.drawable.default_album_art);
+            imgBackground.setImageResource(R.drawable.default_album_art);
+        }
+
+        if (songs != null && !songs.isEmpty()) {
+            // Có bài hát, hiển thị danh sách
+            adapter = new RecyclerViewAdapterSong(requireContext(), songs);
+            adapter.setOnSongClickListener(this);
+            recyclerView.setAdapter(adapter);
+            tvArtistName.setText(artistName); // hoặc lấy tên artist từ bài hát đầu tiên
+            recyclerView.setVisibility(View.VISIBLE);
+            view.findViewById(R.id.emptyStateLayout).setVisibility(View.GONE);
+        } else {
+            // Không có bài hát, hiển thị empty state
+            recyclerView.setVisibility(View.GONE);
+            view.findViewById(R.id.emptyStateLayout).setVisibility(View.VISIBLE);
+        }
 
         // Handle collapsing state
         appBarLayout.addOnOffsetChangedListener(new AppBarLayout.OnOffsetChangedListener() {
@@ -115,38 +153,32 @@ public class AlbumSongsFragment extends Fragment implements OnSongClickListener 
                 if (scrollRange == -1) {
                     scrollRange = appBarLayout.getTotalScrollRange();
                 }
+
+                // Tính toán phần trăm scroll
+                float percentage = (float) Math.abs(verticalOffset) / scrollRange;
+                
                 if (scrollRange + verticalOffset == 0) {
                     // Collapsed
                     collapsingToolbar.setTitle(albumName);
+                    collapsingToolbar.setCollapsedTitleTextColor(getResources().getColor(R.color.textPrimary));
+                    btnBack.setColorFilter(getResources().getColor(R.color.textPrimary));
                     isShow = true;
                 } else if (isShow) {
                     // Expanded
                     collapsingToolbar.setTitle("");
+                    btnBack.setColorFilter(getResources().getColor(R.color.white));
                     isShow = false;
                 }
+
+                // Tạo animation màu mượt cho icon back
+                int colorFrom = getResources().getColor(R.color.white);
+                int colorTo = getResources().getColor(R.color.textPrimary);
+                
+                // Blend màu dựa trên phần trăm scroll
+                int blendedColor = blendColors(colorFrom, colorTo, percentage);
+                btnBack.setColorFilter(blendedColor);
             }
         });
-
-        // Hiển thị ảnh album
-        if (coverUrl != null && !coverUrl.isEmpty()) {
-            Glide.with(this)
-                .load(coverUrl)
-                .placeholder(R.mipmap.ic_launcher)
-                .error(R.mipmap.ic_launcher)
-                .into(imgAlbumCover);
-
-            Glide.with(this)
-                    .load(coverUrl)
-                    .placeholder(R.mipmap.ic_launcher)
-                    .error(R.mipmap.ic_launcher)
-                    .into(imgBackground);
-        }
-
-        if (songs != null) {
-            adapter = new RecyclerViewAdapterSong(requireContext(), songs);
-            adapter.setOnSongClickListener(this);  // Sử dụng OnSongClickListener
-            recyclerView.setAdapter(adapter);
-        }
 
         btnBack.setOnClickListener(v -> {
             if (getParentFragmentManager() != null) {
@@ -174,5 +206,16 @@ public class AlbumSongsFragment extends Fragment implements OnSongClickListener 
         if (getActivity() instanceof MainActivity) {
             ((MainActivity) getActivity()).showPlayer(songList, position, albumName);
         }
+    }
+
+    // Thêm helper method để blend màu
+    private int blendColors(int from, int to, float ratio) {
+        float inverseRatio = 1f - ratio;
+        
+        float r = Color.red(to) * ratio + Color.red(from) * inverseRatio;
+        float g = Color.green(to) * ratio + Color.green(from) * inverseRatio;
+        float b = Color.blue(to) * ratio + Color.blue(from) * inverseRatio;
+        
+        return Color.rgb((int) r, (int) g, (int) b);
     }
 }   
