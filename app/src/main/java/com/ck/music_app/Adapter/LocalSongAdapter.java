@@ -77,7 +77,6 @@ public class LocalSongAdapter extends RecyclerView.Adapter<LocalSongAdapter.View
 
         holder.itemView.setOnClickListener(v -> {
             if (clickListener != null) {
-                System.out.println(position);
                 clickListener.onSongClick(songList, position);
             }
         });
