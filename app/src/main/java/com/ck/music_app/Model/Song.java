@@ -27,10 +27,14 @@ public class Song implements Serializable {
 
     private Integer viewCount;
 
+    private String lyrics;
+
     public Song() {}
 
-    public Song(String songId, List<String> albumId, String artistId, String audioUrl, String coverUrl, String createAt, Integer duration, String genreId, Integer likeCount, String title, Integer viewCount) {
+    public Song(String songId, String lyrics, String title, List<String> albumId, String artistId, String audioUrl, String coverUrl, String createAt, Integer duration, String genreId, Integer likeCount, Integer viewCount) {
         this.songId = songId;
+        this.lyrics = lyrics;
+        this.title = title;
         this.albumId = albumId;
         this.artistId = artistId;
         this.audioUrl = audioUrl;
@@ -39,7 +43,6 @@ public class Song implements Serializable {
         this.duration = duration;
         this.genreId = genreId;
         this.likeCount = likeCount;
-        this.title = title;
         this.viewCount = viewCount;
     }
 
@@ -129,5 +132,13 @@ public class Song implements Serializable {
 
     public void setViewCount(Integer viewCount) {
         this.viewCount = viewCount;
+    }
+
+    public String getLyrics() {
+        return lyrics;
+    }
+
+    public void setLyrics(String lyrics) {
+        this.lyrics = lyrics;
     }
 }

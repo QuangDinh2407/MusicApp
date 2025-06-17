@@ -1,30 +1,28 @@
 package com.ck.music_app;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.view.animation.Animation;
-import android.view.animation.AnimationUtils;
 import android.widget.Toast;
 
-import com.ck.music_app.Fragment.PlayMusicFragment;
+import com.ck.music_app.MainFragment.MusicPlayerFragment;
 import com.ck.music_app.MainFragment.HomeFragment;
 import com.ck.music_app.MainFragment.LibraryFragment;
 import com.ck.music_app.MainFragment.ProfileFragment;
 import com.ck.music_app.MainFragment.SearchFragment;
 import com.ck.music_app.Model.Song;
+import com.ck.music_app.Services.MusicService;
 import com.ck.music_app.Viewpager.MainPagerAdapter;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentTransaction;
 import androidx.viewpager2.widget.ViewPager2;
 import com.ck.music_app.utils.FirestoreUtils;
 import java.util.List;
-import com.google.firebase.firestore.DocumentSnapshot;
-import com.google.firebase.firestore.QueryDocumentSnapshot;
+
 import com.google.firebase.firestore.FirebaseFirestore;
 import java.util.ArrayList;
 
@@ -33,10 +31,10 @@ public class MainActivity extends AppCompatActivity {
     private Fragment[] fragments;
     private ViewPager2 viewPager;
     private BottomNavigationView bottomNavigationView;
-    private PlayMusicFragment playerFragment;
-    private Song currentSong;
+    private MusicPlayerFragment musicplayerFragment;
     private List<Song> currentPlaylist;
-    private int currentSongIndex = 0;
+    private int currentSongIndex;
+    private Song currentSong;
     private boolean isPlaying = false;
     private FirebaseFirestore db;
     private View playerContainer;
@@ -46,15 +44,6 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
-
-        // Lấy email từ Intent và hiển thị Toast
-        String email = getIntent().getStringExtra("email");
-        if (email != null && !email.isEmpty()) {
-            Toast.makeText(this, "Xin chào: " + email, Toast.LENGTH_LONG).show();
-        }
-
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
-        testFirestoreUtils();
 
         // Khởi tạo các fragment chính
         fragments = new Fragment[]{
@@ -101,75 +90,55 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void testFirestoreUtils() {
-        Log.d(TAG, "Bắt đầu test FirestoreUtils");
 
-
-        // Test lấy bài hát từ playlist
-        String playlistId = "124e5b94-4f0f-487b-98ec-663c04e96979";
-        FirestoreUtils.getSongsByPlaylistId(playlistId, new FirestoreUtils.FirestoreCallback<List<Song>>() {
-            @Override
-            public void onSuccess(List<Song> playlistSongs) {
-                StringBuilder result = new StringBuilder("=== Tất cả bài hát ===\n");
-                result.append("Playlist ID: ").append(playlistId).append("\n");
-                result.append("Số lượng: ").append(playlistSongs.size()).append("\n\n");
-
-                for (Song song : playlistSongs) {
-                    result.append("Bài hát: ").append(song.getTitle())
-                            .append(" - ").append(song.getArtistId())
-                            .append("\n");
-                }
-
-                // Log kết quả
-                Log.d(TAG, result.toString());
-                Toast.makeText(MainActivity.this,
-                        "Test hoàn tất, xem log để biết kết quả", Toast.LENGTH_LONG).show();
-            }
-
-            @Override
-            public void onError(Exception e) {
-                Log.e(TAG, "Error getting playlist songs", e);
-                Toast.makeText(MainActivity.this,
-                        "Lỗi playlist: " + e.getMessage(), Toast.LENGTH_LONG).show();
-            }
-        });
-    }
-
-    public void showPlayer(Song song) {
-        currentSong = song;
-        if (currentPlaylist == null) {
-            currentPlaylist = new ArrayList<>();
-        }
-        if (!currentPlaylist.contains(song)) {
-            currentPlaylist.add(song);
-            currentSongIndex = currentPlaylist.size() - 1;
-        } else {
-            currentSongIndex = currentPlaylist.indexOf(song);
-        }
-        
-        showPlayer(currentPlaylist, currentSongIndex);
-    }
-
-    public void showPlayer(List<Song> songList, int position) {
+    public void showPlayer(List<Song> songList, int position, String albumName) {
+        // Lưu trạng thái hiện tại
         currentPlaylist = new ArrayList<>(songList);
         currentSongIndex = position;
         currentSong = songList.get(position);
 
-        if (playerFragment == null) {
-            playerFragment = PlayMusicFragment.newInstance(currentPlaylist, currentSongIndex);
+        // Gửi intent đến Service để phát nhạc
+        Intent intent = new Intent(this, MusicService.class);
+        intent.setAction(MusicService.ACTION_PLAY);
+        intent.putExtra("songList", new ArrayList<>(songList));
+        intent.putExtra("position", position);
+        startService(intent);
+
+        // Hiển thị player fragment
+        if (musicplayerFragment == null) {
+            musicplayerFragment = MusicPlayerFragment.newInstance(currentPlaylist, currentSongIndex, albumName);
             getSupportFragmentManager().beginTransaction()
-                    .replace(R.id.player_container, playerFragment)
+                    .replace(R.id.player_container, musicplayerFragment)
                     .commit();
             playerContainer.setVisibility(View.VISIBLE);
         } else {
-            playerFragment.maximize();
+            musicplayerFragment.updateAlbumName(albumName);
+            musicplayerFragment.updatePlayerInfo(songList, position);
+            musicplayerFragment.maximize();
         }
+    }
+
+    // Overload cho các trường hợp không có albumName
+    public void showPlayer(List<Song> songList, int position) {
+        showPlayer(songList, position, "Now Playing");
+    }
+
+    public List<Song> getCurrentPlaylist() {
+        return currentPlaylist;
+    }
+
+    public int getCurrentSongIndex() {
+        return currentSongIndex;
+    }
+
+    public Song getCurrentSong() {
+        return currentSong;
     }
 
     @Override
     public void onBackPressed() {
-        if (playerFragment != null && playerContainer.getVisibility() == View.VISIBLE) {
-            playerFragment.minimize();
+        if (musicplayerFragment != null && playerContainer.getVisibility() == View.VISIBLE) {
+            musicplayerFragment.minimize();
         } else {
             super.onBackPressed();
         }
