@@ -8,6 +8,7 @@ import android.widget.Toast;
 
 import com.ck.music_app.MainFragment.MusicPlayerFragment;
 import com.ck.music_app.MainFragment.HomeFragment;
+import com.ck.music_app.MainFragment.TrendingFragment;
 import com.ck.music_app.MainFragment.LibraryFragment;
 import com.ck.music_app.MainFragment.ProfileFragment;
 import com.ck.music_app.MainFragment.SearchFragment;
@@ -48,6 +49,7 @@ public class MainActivity extends AppCompatActivity {
         // Khởi tạo các fragment chính
         fragments = new Fragment[]{
                 new HomeFragment(),
+                new TrendingFragment(),
                 new SearchFragment(),
                 new LibraryFragment(),
                 new ProfileFragment()
@@ -76,14 +78,17 @@ public class MainActivity extends AppCompatActivity {
                 case R.id.nav_home:
                     viewPager.setCurrentItem(0);
                     break;
-                case R.id.nav_search:
+                case R.id.nav_trending:
                     viewPager.setCurrentItem(1);
                     break;
-                case R.id.nav_library:
+                case R.id.nav_search:
                     viewPager.setCurrentItem(2);
                     break;
-                case R.id.nav_profile:
+                case R.id.nav_library:
                     viewPager.setCurrentItem(3);
+                    break;
+                case R.id.nav_profile:
+                    viewPager.setCurrentItem(4);
                     break;
             }
             return true;

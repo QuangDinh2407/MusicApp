@@ -4,6 +4,10 @@
         android:icon="@drawable/ic_home_white"
         android:title="Trang chủ" />
     <item
+        android:id="@+id/nav_trending"
+        android:icon="@drawable/ic_trending"
+        android:title="Thịnh hành" />
+    <item
         android:id="@+id/nav_search"
         android:icon="@drawable/ic_search_white"
         android:title="Tìm kiếm" />

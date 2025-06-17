@@ -5,6 +5,7 @@ import java.util.Date;
 import java.util.List;
 
 public class Song implements Serializable {
+    private String id;
     private String songId;
 
     private List<String> albumId;
@@ -140,5 +141,13 @@ public class Song implements Serializable {
 
     public void setLyrics(String lyrics) {
         this.lyrics = lyrics;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
     }
 }
