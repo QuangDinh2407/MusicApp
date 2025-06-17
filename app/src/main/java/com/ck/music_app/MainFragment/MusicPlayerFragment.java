@@ -17,7 +17,10 @@ import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.animation.LinearInterpolator;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.FrameLayout;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -36,12 +39,19 @@ import com.ck.music_app.R;
 import com.ck.music_app.Services.MusicService;
 import com.ck.music_app.Viewpager.MusicPlayerPagerAdapter;
 import com.ck.music_app.utils.GradientUtils;
+import com.ck.music_app.utils.DownloadUtils;
 
 import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import android.Manifest;
+import android.content.pm.PackageManager;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import android.os.Build;
 
 public class MusicPlayerFragment extends Fragment {
     private View rootLayout;
@@ -69,6 +79,13 @@ public class MusicPlayerFragment extends Fragment {
     private float originalY = 0;
     private float miniPlayerY = 0;
     private LocalBroadcastManager broadcaster;
+
+    private View downloadProgressView;
+    private ProgressBar progressBar;
+    private TextView tvDownloadPercent, tvDownloadTitle;
+    private ImageButton btnCancelDownload;
+    private Thread downloadThread;
+    private boolean isDownloading = false;
 
     private final BroadcastReceiver musicReceiver = new BroadcastReceiver() {
         @Override
@@ -141,6 +158,10 @@ public class MusicPlayerFragment extends Fragment {
         });
 
         updateMiniPlayer(songList.get(currentIndex));
+
+        // Khởi tạo view download
+        initializeDownloadView(view);
+        
         return view;
     }
 
@@ -457,6 +478,142 @@ public class MusicPlayerFragment extends Fragment {
         if (fragments != null && fragments.length > 0 && fragments[0] instanceof PlayMusicFragment) {
             PlayMusicFragment playMusicFragment = (PlayMusicFragment) fragments[0];
             playMusicFragment.updateSongList(songList, currentIndex);
+        }
+    }
+
+    private void initializeDownloadView(View view) {
+        // Khởi tạo view tiến trình
+        downloadProgressView = LayoutInflater.from(requireContext())
+                .inflate(R.layout.download_progress_view, null, false);
+        progressBar = downloadProgressView.findViewById(R.id.progressBar);
+        tvDownloadPercent = downloadProgressView.findViewById(R.id.tvDownloadPercent);
+        tvDownloadTitle = downloadProgressView.findViewById(R.id.tvDownloadTitle);
+        btnCancelDownload = downloadProgressView.findViewById(R.id.btnCancelDownload);
+
+        // Thêm view tiến trình vào container
+        FrameLayout downloadContainer = view.findViewById(R.id.downloadContainer);
+        downloadContainer.addView(downloadProgressView);
+        downloadProgressView.setVisibility(View.GONE);
+
+        // Thêm animation cho view download
+        downloadProgressView.setTranslationY(200);
+        downloadProgressView.setAlpha(0f);
+
+        btnCancelDownload.setOnClickListener(v -> cancelDownload());
+    }
+
+    public void handleDownload(Song song) {
+        if (isDownloading) {
+            Toast.makeText(getContext(), "Đang tải xuống...", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (song == null || song.getAudioUrl() == null) {
+            Toast.makeText(getContext(), "Không có bài hát nào đang phát", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Kiểm tra nếu URL bắt đầu bằng "content://" thì là bài hát local
+        if (song.getAudioUrl().startsWith("content://")) {
+            Toast.makeText(getContext(), "Bài hát đã được tải về thiết bị", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Kiểm tra quyền truy cập bộ nhớ
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(requireContext(), 
+                    Manifest.permission.READ_MEDIA_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{Manifest.permission.READ_MEDIA_AUDIO}, 1001);
+                return;
+            }
+        } else {
+            if (ContextCompat.checkSelfPermission(requireContext(), 
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1001);
+                return;
+            }
+        }
+
+        // Bắt đầu tải xuống
+        isDownloading = true;
+        showDownloadProgress();
+
+        downloadThread = new Thread(() -> {
+            DownloadUtils.downloadSong(
+                requireContext(),
+                song.getAudioUrl(),
+                song.getTitle(),
+                song.getArtistId(),
+                song.getCoverUrl(),
+                song.getLyrics(),
+                new DownloadUtils.DownloadCallback() {
+                    @Override
+                    public void onProgressUpdate(int progress) {
+                        if (Thread.currentThread().isInterrupted()) {
+                            throw new RuntimeException("Download cancelled");
+                        }
+                        requireActivity().runOnUiThread(() -> {
+                            progressBar.setProgress(progress);
+                            tvDownloadPercent.setText(progress + "%");
+                            tvDownloadTitle.setText("Đang tải: " + song.getTitle());
+                        });
+                    }
+
+                    @Override
+                    public void onDownloadComplete(String filePath) {
+                        requireActivity().runOnUiThread(() -> {
+                            hideDownloadProgress();
+                            Toast.makeText(getContext(), "Tải xuống thành công!", Toast.LENGTH_SHORT).show();
+                            isDownloading = false;
+                        });
+                    }
+
+                    @Override
+                    public void onError(String message) {
+                        requireActivity().runOnUiThread(() -> {
+                            hideDownloadProgress();
+                            Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
+                            isDownloading = false;
+                        });
+                    }
+                }
+            );
+        });
+        downloadThread.start();
+    }
+
+    private void showDownloadProgress() {
+        downloadProgressView.setVisibility(View.VISIBLE);
+        downloadProgressView.animate()
+                .translationY(0)
+                .alpha(1f)
+                .setDuration(300)
+                .start();
+    }
+
+    private void hideDownloadProgress() {
+        downloadProgressView.animate()
+                .translationY(200)
+                .alpha(0f)
+                .setDuration(300)
+                .withEndAction(() -> downloadProgressView.setVisibility(View.GONE))
+                .start();
+    }
+
+    private void cancelDownload() {
+        if (downloadThread != null) {
+            downloadThread.interrupt();
+        }
+        hideDownloadProgress();
+        isDownloading = false;
+        Toast.makeText(getContext(), "Đã hủy tải xuống", Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        if (isDownloading) {
+            cancelDownload();
         }
     }
 } 

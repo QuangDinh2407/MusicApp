@@ -1,17 +1,16 @@
 package com.ck.music_app.MainFragment;
 
 import android.os.Bundle;
-
 import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentManager;
-
+import androidx.fragment.app.FragmentTransaction;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-
-import com.ck.music_app.R;
 import android.widget.ImageView;
+
 import com.bumptech.glide.Glide;
+import com.ck.music_app.MainFragment.ProfileChildFragment.DownloadedFragment;
+import com.ck.music_app.R;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -19,6 +18,9 @@ import com.bumptech.glide.Glide;
  * create an instance of this fragment.
  */
 public class ProfileFragment extends Fragment {
+
+    private View mainLayout;
+    private View fragmentContainer;
 
     // TODO: Rename parameter arguments, choose names that match
     // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
@@ -63,36 +65,56 @@ public class ProfileFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        // Inflate the layout for this fragment
         View view = inflater.inflate(R.layout.fragment_profile, container, false);
 
+        mainLayout = view.findViewById(R.id.profile_main_layout);
+        fragmentContainer = view.findViewById(R.id.profile_fragment_container);
+
+        DownloadedFragment downloadedFragment = new DownloadedFragment();
+        // Load avatar
         ImageView imgAvatar = view.findViewById(R.id.imgAvatar);
-        // Thay avatar.png bằng đường dẫn ảnh thực tế nếu có
         Glide.with(this)
                 .load(R.drawable.cat_avatar)
                 .circleCrop()
                 .into(imgAvatar);
 
-        // Sự kiện click Đã tải
+        // Thêm callback để xử lý khi fragment bị remove
+        downloadedFragment.setOnFragmentDismissListener(() -> {
+            mainLayout.setVisibility(View.VISIBLE);
+            fragmentContainer.setVisibility(View.GONE);
+        });
+        // Xử lý sự kiện click cho các chức năng
         View llDownloaded = view.findViewById(R.id.llDownloaded);
         llDownloaded.setOnClickListener(v -> {
-            // Ẩn ViewPager2 và hiện fragment container
-            View fragmentContainer = requireActivity().findViewById(R.id.fragment_container);
-            View viewPager = requireActivity().findViewById(R.id.view_pager);
-            fragmentContainer.setVisibility(View.VISIBLE);
-            if (viewPager != null) viewPager.setVisibility(View.GONE);
+            if (isAdded()) {
+                // Ẩn layout chính và hiện container
+                mainLayout.setVisibility(View.GONE);
+                fragmentContainer.setVisibility(View.VISIBLE);
 
-            // Xóa tất cả các fragment trong back stack
-            requireActivity().getSupportFragmentManager().popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE);
-
-            // Thêm fragment mới
-            requireActivity().getSupportFragmentManager()
-                .beginTransaction()
-                .replace(R.id.fragment_container, new DownloadedFragment())
-                .addToBackStack(null)
-                .commit();
+                // Thực hiện transaction để thay thế fragment hiện tại bằng DownloadedFragment
+                FragmentTransaction transaction = getChildFragmentManager().beginTransaction();
+                transaction.setCustomAnimations(
+                    R.anim.slide_in_left,  // Enter animation
+                    R.anim.slide_out_left,  // Exit animation
+                    R.anim.slide_in_right,  // Pop enter animation
+                    R.anim.slide_out_right  // Pop exit animation
+                );
+                transaction.replace(R.id.profile_fragment_container, downloadedFragment);
+                transaction.addToBackStack(null);
+                transaction.commit();
+            }
         });
 
         return view;
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // Kiểm tra nếu không có fragment con nào trong stack
+        if (getChildFragmentManager().getBackStackEntryCount() == 0) {
+            mainLayout.setVisibility(View.VISIBLE);
+            fragmentContainer.setVisibility(View.GONE);
+        }
     }
 }
