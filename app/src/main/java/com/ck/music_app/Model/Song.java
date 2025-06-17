@@ -30,6 +30,16 @@ public class Song implements Serializable {
 
     private String lyrics;
 
+    private String artist;
+
+    private String genre;
+
+    private String album;
+
+    private String year;
+
+    private String imageUrl;
+
     public Song() {}
 
     public Song(String songId, String lyrics, String title, List<String> albumId, String artistId, String audioUrl, String coverUrl, String createAt, Integer duration, String genreId, Integer likeCount, Integer viewCount) {
@@ -135,6 +145,11 @@ public class Song implements Serializable {
         this.viewCount = viewCount;
     }
 
+    // Method riêng để set viewCount từ Long
+    public void setViewCountFromLong(Long viewCount) {
+        this.viewCount = viewCount != null ? viewCount.intValue() : 0;
+    }
+
     public String getLyrics() {
         return lyrics;
     }
@@ -149,5 +164,63 @@ public class Song implements Serializable {
 
     public void setId(String id) {
         this.id = id;
+    }
+
+    public String getArtist() {
+        return artist;
+    }
+
+    public void setArtist(String artist) {
+        this.artist = artist;
+    }
+
+    public String getGenre() {
+        return genre;
+    }
+
+    public void setGenre(String genre) {
+        this.genre = genre;
+    }
+
+    public String getAlbum() {
+        return album;
+    }
+
+    public void setAlbum(String album) {
+        this.album = album;
+    }
+
+    public String getYear() {
+        return year;
+    }
+
+    public void setYear(String year) {
+        this.year = year;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
+    }
+
+    // Method riêng để set duration từ String format
+    public void setDurationFromString(String duration) {
+        // Chuyển đổi String duration thành Integer nếu cần
+        try {
+            if (duration != null && duration.contains(":")) {
+                // Format "mm:ss" -> chuyển thành seconds
+                String[] parts = duration.split(":");
+                int minutes = Integer.parseInt(parts[0]);
+                int seconds = Integer.parseInt(parts[1]);
+                this.duration = minutes * 60 + seconds;
+            } else if (duration != null) {
+                this.duration = Integer.parseInt(duration);
+            }
+        } catch (NumberFormatException e) {
+            this.duration = 0; // Default value
+        }
     }
 }

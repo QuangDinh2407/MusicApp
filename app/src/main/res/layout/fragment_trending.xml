@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:background="@color/background"
     tools:context=".MainFragment.TrendingFragment">
 
     <LinearLayout
@@ -14,23 +14,69 @@
         android:padding="16dp">
 
         <!-- Header -->
-        <TextView
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Thịnh hành"
-            android:textSize="24sp"
-            android:textStyle="bold"
-            android:textColor="@android:color/white"
-            android:layout_marginBottom="16dp"
-            android:gravity="center" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Thịnh hành"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:textColor="@color/textPrimary"
+                android:gravity="center" />
+
+            <Button
+                android:id="@+id/btnCountry"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🇻🇳 Việt Nam"
+                android:textColor="@color/textPrimary"
+                android:background="?attr/selectableItemBackground"
+                android:drawableEnd="@drawable/ic_arrow_down_simple"
+                android:drawablePadding="8dp"
+                android:padding="8dp" />
+
+        </LinearLayout>
+
+        <!-- Section Title -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="12dp">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_trending"
+                android:tint="@color/colorAccent"
+                android:layout_marginEnd="8dp" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Bài hát thịnh hành"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="@color/textPrimary" />
+
+        </LinearLayout>
 
         <!-- Trending Songs List -->
         <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/recyclerViewTrendingSongs"
+            android:id="@+id/recyclerViewGeminiTrending"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:scrollbars="vertical" />
+            android:clipToPadding="false" />
 
         <!-- Progress Bar -->
         <ProgressBar
@@ -38,19 +84,36 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
-            android:visibility="gone" />
+            android:layout_marginTop="32dp"
+            android:visibility="gone"
+            android:indeterminateTint="@color/colorAccent" />
 
         <!-- Empty State -->
-        <TextView
-            android:id="@+id/textViewEmptyState"
+        <LinearLayout
+            android:id="@+id/emptyStateLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Không có bài hát thịnh hành"
-            android:textColor="@android:color/white"
-            android:textSize="16sp"
+            android:orientation="vertical"
             android:gravity="center"
-            android:layout_gravity="center"
-            android:visibility="gone" />
+            android:layout_marginTop="48dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:src="@drawable/ic_music_note"
+                android:tint="@color/textSecondary"
+                android:layout_marginBottom="16dp" />
+
+            <TextView
+                android:id="@+id/textViewEmptyState"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Không có bài hát thịnh hành"
+                android:textColor="@color/textSecondary"
+                android:textSize="16sp" />
+
+        </LinearLayout>
 
     </LinearLayout>
 
