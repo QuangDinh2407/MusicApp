@@ -115,4 +115,11 @@
     <color name="transparent">#00000000</color>
 
     <color name="accent_orange">#ff914d</color>
+    <!-- Theme colors -->
+    <color name="surface_dark">#282828</color>
+    <color name="surface_light">#FFFFFF</color>
+    <color name="text_primary_dark">#FFFFFF</color>
+    <color name="text_primary_light">#000000</color>
+    <color name="text_secondary_dark">#B3B3B3</color>
+    <color name="text_secondary_light">#6B6B6B</color>
 </resources>
