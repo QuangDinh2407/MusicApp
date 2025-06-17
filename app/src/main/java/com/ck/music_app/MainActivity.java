@@ -72,7 +72,21 @@ public class MainActivity extends AppCompatActivity {
         viewPager = findViewById(R.id.view_pager);
         MainPagerAdapter adapter = new MainPagerAdapter(this, fragments);
         viewPager.setAdapter(adapter);
-        viewPager.setCurrentItem(0, false);
+        
+        // Đảm bảo adapter được set trước khi chuyển trang
+        viewPager.post(() -> {
+            // Kiểm tra xem có yêu cầu mở fragment download không
+            boolean openDownloadFragment = getIntent().getBooleanExtra("openDownloadFragment", false);
+            if (openDownloadFragment) {
+                viewPager.setCurrentItem(3, false); // Chuyển đến Profile Fragment (index 3)
+                bottomNavigationView.setSelectedItemId(R.id.nav_profile); // Cập nhật bottom navigation
+                // Gửi broadcast để mở fragment download
+                Intent intent = new Intent("OPEN_DOWNLOAD_FRAGMENT");
+                LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+            } else {
+                viewPager.setCurrentItem(0, false);
+            }
+        });
 
         bottomNavigationView = findViewById(R.id.bottom_navigation);
         playerContainer = findViewById(R.id.player_container);

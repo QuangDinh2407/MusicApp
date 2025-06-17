@@ -3,7 +3,10 @@ package com.ck.music_app.Auth;
 import static android.content.ContentValues.TAG;
 
 import android.app.Dialog;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
@@ -20,6 +23,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.ck.music_app.MainActivity;
 import com.ck.music_app.R;
@@ -48,6 +52,8 @@ import com.google.firebase.auth.FacebookAuthProvider;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+import com.ck.music_app.Services.InternetService;
+
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -73,19 +79,44 @@ public class LoginActivity extends AppCompatActivity {
 
     private Dialog loadingDialog;
 
+    private LocalBroadcastManager broadcaster;
+    private boolean isConnected = false;
+
+    private final BroadcastReceiver internetReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent.getAction().equals(InternetService.BROADCAST_INTERNET_STATE)) {
+                boolean newConnectionState = intent.getBooleanExtra("isConnected", false);
+                if (newConnectionState != isConnected) {
+                    isConnected = newConnectionState;
+                    showInternetStatus(isConnected);
+                }
+            }
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
         init();
         initLoadingDialog();
-        checkRememberMe();
         EdgeToEdge.enable(this);
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.login), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+
+        // Khởi tạo LocalBroadcastManager
+        broadcaster = LocalBroadcastManager.getInstance(this);
+        
+        // Khởi động InternetService
+        startService(new Intent(this, InternetService.class));
+        
+        // Kiểm tra trạng thái internet ban đầu
+        isConnected = InternetService.isInternetAvailable(this);
+        showInternetStatus(isConnected);
     }
 
     private void init() {
@@ -377,5 +408,103 @@ public class LoginActivity extends AppCompatActivity {
                 db.collection("users").document(uid).set(userMap);
             }
         });
+    }
+
+    private void showInternetStatus(boolean isConnected) {
+        if (!isConnected) {
+            Toast.makeText(LoginActivity.this, 
+                "Không có kết nối internet - Chuyển sang chế độ offline", 
+                Toast.LENGTH_SHORT).show();
+                
+            // Khi không có kết nối internet, chuyển đến MainActivity với flag để mở fragment download
+            Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+            intent.putExtra("openDownloadFragment", true);
+            startActivity(intent);
+            finish();
+        } else {
+            Toast.makeText(LoginActivity.this, 
+                "Đã kết nối internet - Kiểm tra trạng thái đăng nhập", 
+                Toast.LENGTH_SHORT).show();
+                
+            // Khi có kết nối internet, kiểm tra xem đã đăng nhập chưa
+            FirebaseUser currentUser = auth.getCurrentUser();
+            if (currentUser != null) {
+                Toast.makeText(LoginActivity.this, 
+                    "Đã đăng nhập với tài khoản: " + currentUser.getEmail(), 
+                    Toast.LENGTH_SHORT).show();
+                    
+                // Nếu đã đăng nhập, tiếp tục vào MainActivity
+                Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                startActivity(intent);
+                finish();
+            } else {
+                // Nếu chưa đăng nhập, thử tự động đăng nhập
+                handleAutoLogin();
+            }
+        }
+    }
+
+    private void handleAutoLogin() {
+        boolean isRemembered = sharedPreferences.getBoolean(KEY_REMEMBER, false);
+        if (isRemembered) {
+            String savedEmail = sharedPreferences.getString(KEY_EMAIL, "");
+            String savedPassword = sharedPreferences.getString(KEY_PASSWORD, "");
+            
+            if (!savedEmail.isEmpty() && !savedPassword.isEmpty()) {
+                Toast.makeText(LoginActivity.this, 
+                    "Đang thử tự động đăng nhập với email: " + savedEmail, 
+                    Toast.LENGTH_SHORT).show();
+                    
+                showLoading();
+                auth.signInWithEmailAndPassword(savedEmail, savedPassword)
+                    .addOnCompleteListener(this, task -> {
+                        hideLoading();
+                        if (task.isSuccessful()) {
+                            Toast.makeText(LoginActivity.this, 
+                                "Tự động đăng nhập thành công!", 
+                                Toast.LENGTH_SHORT).show();
+                                
+                            FirebaseUser user = auth.getCurrentUser();
+                            createUserIfNotExists(user);
+                            Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                            intent.putExtra("email", savedEmail);
+                            startActivity(intent);
+                            finish();
+                        } else {
+                            // Nếu tự động đăng nhập thất bại, xóa thông tin đăng nhập đã lưu
+                            SharedPreferences.Editor editor = sharedPreferences.edit();
+                            editor.clear();
+                            editor.apply();
+                            
+                            Toast.makeText(LoginActivity.this, 
+                                "Đăng nhập tự động thất bại. Vui lòng đăng nhập lại.", 
+                                Toast.LENGTH_LONG).show();
+                        }
+                    });
+            } else {
+                Toast.makeText(LoginActivity.this, 
+                    "Không tìm thấy thông tin đăng nhập đã lưu", 
+                    Toast.LENGTH_SHORT).show();
+            }
+        } else {
+            Toast.makeText(LoginActivity.this, 
+                "Chưa bật chức năng ghi nhớ đăng nhập", 
+                Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Đăng ký nhận broadcast
+        IntentFilter filter = new IntentFilter(InternetService.BROADCAST_INTERNET_STATE);
+        broadcaster.registerReceiver(internetReceiver, filter);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // Hủy đăng ký broadcast
+        broadcaster.unregisterReceiver(internetReceiver);
     }
 }

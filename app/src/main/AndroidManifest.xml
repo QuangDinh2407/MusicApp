@@ -51,6 +51,10 @@
             android:enabled="true"
             android:exported="false" />
 
+        <service android:name=".Services.InternetService"
+            android:enabled="true"
+            android:exported="false" />
+
         <activity
             android:name=".Activity.PlaylistDetailActivity"
             android:exported="false"
