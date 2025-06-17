@@ -28,6 +28,7 @@
                 android:id="@+id/headerLayout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+
                 android:padding="16dp">
 
                 <com.google.android.material.imageview.ShapeableImageView
@@ -35,6 +36,7 @@
                     android:layout_width="32dp"
                     android:layout_height="32dp"
                     android:scaleType="centerCrop"
+                    android:src="@drawable/avata"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent"
                     app:shapeAppearanceOverlay="@style/CircleImageView"
@@ -45,7 +47,8 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="16dp"
-                    android:layout_marginEnd="16dp"
+                    android:layout_marginEnd="18dp"
+                    android:textSize="18dp"
                     android:text="Thư viện của bạn"
                     android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
                     app:layout_constraintEnd_toStartOf="@+id/btnSearch"
