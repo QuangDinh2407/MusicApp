@@ -1,5 +1,7 @@
 package com.ck.music_app.Activity;
 
+import static androidx.core.content.ContentProviderCompat.requireContext;
+
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -36,9 +38,12 @@ import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.MultiTransformation;
 import com.bumptech.glide.load.resource.bitmap.CenterCrop;
 import com.ck.music_app.Adapter.PlaylistSongAdapter;
+import com.ck.music_app.MainActivity;
+import com.ck.music_app.MainFragment.MusicPlayerFragment;
 import com.ck.music_app.Model.Playlist;
 import com.ck.music_app.Model.Song;
 import com.ck.music_app.R;
+import com.ck.music_app.Services.MusicService;
 import com.google.android.material.button.MaterialButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentSnapshot;
@@ -482,8 +487,18 @@ public class PlaylistDetailActivity extends AppCompatActivity implements Playlis
 
     @Override
     public void onSongClick(Song song) {
-        // TODO: Play song
-        Toast.makeText(this, "Đang phát: " + song.getTitle(), Toast.LENGTH_SHORT).show();
+        // Tìm vị trí của bài hát được click trong danh sách
+        int position = songs.indexOf(song);
+
+        // Chuyển về MainActivity và hiển thị player ngay lập tức
+        Intent mainIntent = new Intent(this, MainActivity.class);
+        mainIntent.putExtra("songList", new ArrayList<>(songs));
+        mainIntent.putExtra("position", position);
+        mainIntent.putExtra("albumName", playlist.getName());
+        mainIntent.putExtra("showPlayer", true);
+        mainIntent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+        startActivity(mainIntent);
+        finish();
     }
 
     @Override

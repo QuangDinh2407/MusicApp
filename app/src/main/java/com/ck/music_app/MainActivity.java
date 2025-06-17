@@ -1,6 +1,9 @@
 package com.ck.music_app;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -19,6 +22,7 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.viewpager2.widget.ViewPager2;
 import com.ck.music_app.utils.FirestoreUtils;
 import java.util.List;
@@ -38,6 +42,18 @@ public class MainActivity extends AppCompatActivity {
     private boolean isPlaying = false;
     private FirebaseFirestore db;
     private View playerContainer;
+
+    private final BroadcastReceiver playerReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if ("SHOW_PLAYER".equals(intent.getAction())) {
+                ArrayList<Song> songList = (ArrayList<Song>) intent.getSerializableExtra("songList");
+                int position = intent.getIntExtra("position", 0);
+                String albumName = intent.getStringExtra("albumName");
+                showPlayer(songList, position, albumName);
+            }
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -88,8 +104,52 @@ public class MainActivity extends AppCompatActivity {
             }
             return true;
         });
+
+        // Đăng ký broadcast receiver
+        IntentFilter filter = new IntentFilter("SHOW_PLAYER");
+        LocalBroadcastManager.getInstance(this).registerReceiver(playerReceiver, filter);
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Hủy đăng ký broadcast receiver
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(playerReceiver);
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handlePlayerIntent(intent);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        handlePlayerIntent(getIntent());
+    }
+
+    private void handlePlayerIntent(Intent intent) {
+        if (intent != null && intent.getBooleanExtra("showPlayer", false)) {
+            ArrayList<Song> songList = (ArrayList<Song>) intent.getSerializableExtra("songList");
+            int position = intent.getIntExtra("position", 0);
+            String albumName = intent.getStringExtra("albumName");
+            
+            // Phát nhạc
+            Intent serviceIntent = new Intent(this, MusicService.class);
+            serviceIntent.setAction(MusicService.ACTION_PLAY);
+            serviceIntent.putExtra("songList", songList);
+            serviceIntent.putExtra("position", position);
+            startService(serviceIntent);
+
+            // Hiển thị player
+            showPlayer(songList, position, albumName);
+            
+            // Xóa flag để tránh hiển thị lại player khi activity resume
+            intent.removeExtra("showPlayer");
+        }
+    }
 
     public void showPlayer(List<Song> songList, int position, String albumName) {
         // Lưu trạng thái hiện tại
