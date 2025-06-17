@@ -8,6 +8,7 @@ import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -15,6 +16,7 @@ import androidx.fragment.app.Fragment;
 import androidx.appcompat.widget.Toolbar;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.ck.music_app.interfaces.OnSongClickListener;
 import com.google.android.material.appbar.CollapsingToolbarLayout;
@@ -26,16 +28,24 @@ import com.ck.music_app.MainActivity;
 import com.ck.music_app.Model.Song;
 import com.ck.music_app.R;
 import com.ck.music_app.Services.MusicService;
+import com.ck.music_app.utils.FavoriteAlbumUtils;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FieldValue;
+
 public class AlbumSongsFragment extends Fragment implements OnSongClickListener {
+    private static final String BROADCAST_FAVORITE_UPDATED = "favorite_album_updated";
     private List<Song> songs;
     private String albumName;
     private String coverUrl;
     private ImageView imgAlbumCover, imgBackground;
-    private ImageButton btnBack;
+    private ImageButton btnBack, btnFavorite;
+    private boolean isFavorite = false;
     private CollapsingToolbarLayout collapsingToolbar;
     private AppBarLayout appBarLayout;
     private TextView tvAlbumTitle;
@@ -44,6 +54,9 @@ public class AlbumSongsFragment extends Fragment implements OnSongClickListener 
     private RecyclerViewAdapterSong adapter;
 
     private OnFragmentDismissListener dismissListener;
+
+    private FirebaseFirestore db;
+    private FirebaseUser currentUser;
 
     public interface OnFragmentDismissListener {
         void onDismiss();
@@ -79,6 +92,8 @@ public class AlbumSongsFragment extends Fragment implements OnSongClickListener 
             albumName = getArguments().getString("albumName");
             coverUrl = getArguments().getString("coverUrl");
         }
+        db = FirebaseFirestore.getInstance();
+        currentUser = FirebaseAuth.getInstance().getCurrentUser();
     }
 
     @Nullable
@@ -95,6 +110,10 @@ public class AlbumSongsFragment extends Fragment implements OnSongClickListener 
         imgAlbumCover = view.findViewById(R.id.imgCover);
         imgBackground = view.findViewById(R.id.imgBackground);
         btnBack = view.findViewById(R.id.btnBack);
+        btnFavorite = view.findViewById(R.id.btnFavorite);
+
+        // Set up heart button click listener
+        btnFavorite.setOnClickListener(v -> toggleFavorite());
 
         // Set up RecyclerView
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
@@ -158,6 +177,22 @@ public class AlbumSongsFragment extends Fragment implements OnSongClickListener 
             }
         });
 
+        // Check if album is already favorited
+        if (currentUser != null) {
+            FavoriteAlbumUtils.checkFavoriteStatus(currentUser.getUid(), albumName, new FavoriteAlbumUtils.FavoriteCallback() {
+                @Override
+                public void onSuccess(boolean isFavorited) {
+                    isFavorite = isFavorited;
+                    updateFavoriteButton();
+                }
+
+                @Override
+                public void onError() {
+                    // Handle error if needed
+                }
+            });
+        }
+
         return view;
     }
 
@@ -173,6 +208,39 @@ public class AlbumSongsFragment extends Fragment implements OnSongClickListener 
         // Hiển thị player fragment
         if (getActivity() instanceof MainActivity) {
             ((MainActivity) getActivity()).showPlayer(songList, position, albumName);
+        }
+    }
+
+    private void toggleFavorite() {
+        FavoriteAlbumUtils.toggleFavoriteAlbum(
+            requireContext(),
+            albumName,
+            coverUrl,
+            isFavorite,
+            new FavoriteAlbumUtils.FavoriteCallback() {
+                @Override
+                public void onSuccess(boolean newFavoriteState) {
+                    isFavorite = newFavoriteState;
+                    updateFavoriteButton();
+                }
+
+                @Override
+                public void onError() {
+                    // Revert UI on error
+                    isFavorite = !isFavorite;
+                    updateFavoriteButton();
+                }
+            }
+        );
+    }
+
+    private void updateFavoriteButton() {
+        if (isFavorite) {
+            btnFavorite.setImageResource(R.drawable.ic_heart_full);
+            btnFavorite.setColorFilter(getResources().getColor(R.color.accent_orange));
+        } else {
+            btnFavorite.setImageResource(R.drawable.ic_heart);
+            btnFavorite.setColorFilter(getResources().getColor(android.R.color.white));
         }
     }
 }   

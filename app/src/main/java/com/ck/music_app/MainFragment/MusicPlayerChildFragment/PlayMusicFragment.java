@@ -5,7 +5,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -31,12 +30,12 @@ import com.ck.music_app.R;
 import com.ck.music_app.Services.MusicService;
 import com.ck.music_app.utils.GradientUtils;
 import com.ck.music_app.utils.MusicUtils;
+import com.ck.music_app.utils.PlaylistDialogUtils;
 
 import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -59,7 +58,7 @@ public class PlayMusicFragment extends Fragment {
     private ImageView imgVinyl, imgCover;
     private TextView tvTitle, tvArtist, tvCurrentTime, tvTotalTime;
     private SeekBar seekBar;
-    private ImageButton btnPlayPause, btnPrevious, btnNext, btnShuffle, btnRepeat, btnDownload;
+    private ImageButton btnPlayPause, btnPrevious, btnNext, btnShuffle, btnRepeat, btnDownload, btnAddToPlaylist;
 
     private LoadingDialog loadingDialog;
 
@@ -160,6 +159,7 @@ public class PlayMusicFragment extends Fragment {
         btnShuffle = view.findViewById(R.id.btnShuffle);
         btnRepeat = view.findViewById(R.id.btnRepeat);
         btnDownload = view.findViewById(R.id.btnDownload);
+        btnAddToPlaylist = view.findViewById(R.id.btnAddToPlaylist);
     }
 
     private void initListeners() {
@@ -169,6 +169,7 @@ public class PlayMusicFragment extends Fragment {
         btnShuffle.setOnClickListener(v -> toggleShuffle());
         btnRepeat.setOnClickListener(v -> toggleRepeat());
         btnDownload.setOnClickListener(v -> handleDownload());
+        btnAddToPlaylist.setOnClickListener(v -> showAddToPlaylistDialog());
 
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
@@ -408,6 +409,17 @@ public class PlayMusicFragment extends Fragment {
         }
     }
 
+    private void handleAddToPlaylist() {
+        // Lấy thông tin bài hát hiện tại
+        Song currentSong = MusicService.getCurrentSong();
+        if (currentSong == null) {
+            Toast.makeText(getContext(), "Không có bài hát nào đang phát", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        showAddToPlaylistDialog();
+    }
+
     private void handleDownload() {
         // Lấy thông tin bài hát hiện tại
         Song currentSong = MusicService.getCurrentSong();
@@ -424,6 +436,16 @@ public class PlayMusicFragment extends Fragment {
         }
     }
 
+    private void showAddToPlaylistDialog() {
+        // Get current song
+        Song currentSong = MusicService.getCurrentSong();
+        if (currentSong == null) {
+            Toast.makeText(getContext(), "Không có bài hát nào đang phát", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        PlaylistDialogUtils.showAddToPlaylistDialog(requireContext(), currentSong);
+    }
 
     @Override
     public void onDestroy() {
@@ -435,7 +457,6 @@ public class PlayMusicFragment extends Fragment {
         stopVinylRotation();
         stopCoverRotation();
     }
-
 
     @Override
     public void onDestroyView() {

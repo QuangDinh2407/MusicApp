@@ -61,6 +61,11 @@ public class RecyclerViewAdapterSong extends RecyclerView.Adapter<RecyclerViewAd
         return songList.size();
     }
 
+    public void updateSongs(List<Song> newSongs) {
+        this.songList = newSongs;
+        notifyDataSetChanged();
+    }
+
     public static class ViewHolder extends RecyclerView.ViewHolder {
         ImageView imgCover;
         TextView tvTitle, tvArtist, tvViewCount;

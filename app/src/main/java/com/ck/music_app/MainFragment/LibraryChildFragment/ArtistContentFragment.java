@@ -1,9 +1,15 @@
 package com.ck.music_app.MainFragment.LibraryChildFragment;
 
+import android.content.Intent;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
+import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
@@ -12,22 +18,41 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.ck.music_app.Adapter.ArtistAdapter;
+import com.ck.music_app.Model.Artist;
 import com.ck.music_app.R;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.FieldValue;
+import com.google.firebase.firestore.FirebaseFirestore;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * A simple {@link Fragment} subclass.
  * Use the {@link ArtistContentFragment#newInstance} factory method to
  * create an instance of this fragment.
  */
-public class ArtistContentFragment extends Fragment {
+public class ArtistContentFragment extends Fragment implements ArtistAdapter.OnArtistClickListener {
 
     private RecyclerView rvFollowedArtists;
     private LinearLayout layoutEmptyState;
-    private LinearLayout layoutSearchArtist;
     private ChipGroup chipGroupFilter;
-    private Chip chipRecent, chipAlphabetical;
+    private Chip chipAll, chipFollowing;
+    private EditText etSearchArtist;
+    private ImageView btnClearSearch;
+    private View rootLayout;
+    
+    private List<Artist> allArtists = new ArrayList<>();
+    private List<Artist> followedArtists = new ArrayList<>();
+    private List<Artist> filteredArtists = new ArrayList<>();
+    private ArtistAdapter artistAdapter;
+    private FirebaseFirestore db;
+    private String currentUserId;
 
     public ArtistContentFragment() {
         // Required empty public constructor
@@ -48,48 +73,238 @@ public class ArtistContentFragment extends Fragment {
                            Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_artist_content, container, false);
         initializeViews(view);
+        setupFirebase();
         setupRecyclerView();
         setupListeners();
+        loadArtists();
         return view;
+    }
+
+    private void setupFirebase() {
+        db = FirebaseFirestore.getInstance();
+        currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
     }
 
     private void initializeViews(View view) {
         rvFollowedArtists = view.findViewById(R.id.rvFollowedArtists);
         layoutEmptyState = view.findViewById(R.id.layoutEmptyState);
-        layoutSearchArtist = view.findViewById(R.id.layoutSearchArtist);
         chipGroupFilter = view.findViewById(R.id.chipGroupFilter);
-        chipRecent = view.findViewById(R.id.chipRecent);
-        chipAlphabetical = view.findViewById(R.id.chipAlphabetical);
+        chipAll = view.findViewById(R.id.chipAll);
+        chipFollowing = view.findViewById(R.id.chipFollowing);
+        etSearchArtist = view.findViewById(R.id.etSearchArtist);
+        btnClearSearch = view.findViewById(R.id.btnClearSearch);
+        rootLayout = view.findViewById(R.id.rootLayout);
 
         // Set default selection
-        chipRecent.setChecked(true);
+        chipAll.setChecked(true);
     }
 
     private void setupRecyclerView() {
+        artistAdapter = new ArtistAdapter(new ArrayList<>(), this);
         rvFollowedArtists.setLayoutManager(new LinearLayoutManager(getContext()));
-        // TODO: Set adapter and load data
-        
-        // Temporary: Show empty state
-        showEmptyState(true);
+        rvFollowedArtists.setAdapter(artistAdapter);
     }
 
     private void setupListeners() {
-        layoutSearchArtist.setOnClickListener(v -> {
-            // TODO: Implement artist search
-            Toast.makeText(getContext(), "Tính năng tìm kiếm nghệ sĩ sẽ được triển khai sau", Toast.LENGTH_SHORT).show();
+        // Search functionality
+        etSearchArtist.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                filterArtists(s.toString());
+                btnClearSearch.setVisibility(s.length() > 0 ? View.VISIBLE : View.GONE);
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {}
+        });
+
+        // Handle IME action done
+        etSearchArtist.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_DONE) {
+                clearSearchFocus();
+                return true;
+            }
+            return false;
+        });
+
+        btnClearSearch.setOnClickListener(v -> {
+            etSearchArtist.setText("");
+            btnClearSearch.setVisibility(View.GONE);
+            clearSearchFocus();
+        });
+
+        // Clear focus when clicking outside
+        rootLayout.setOnClickListener(v -> clearSearchFocus());
+        
+        // Clear focus when scrolling RecyclerView
+        rvFollowedArtists.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
+                super.onScrollStateChanged(recyclerView, newState);
+                if (newState == RecyclerView.SCROLL_STATE_DRAGGING) {
+                    clearSearchFocus();
+                }
+            }
         });
 
         chipGroupFilter.setOnCheckedChangeListener((group, checkedId) -> {
-            if (checkedId == R.id.chipRecent) {
-                // TODO: Sort by recent
-            } else if (checkedId == R.id.chipAlphabetical) {
-                // TODO: Sort alphabetically
+            if (checkedId == R.id.chipAll) {
+                filterArtists(etSearchArtist.getText().toString());
+            } else if (checkedId == R.id.chipFollowing) {
+                filterArtists(etSearchArtist.getText().toString());
             }
+            clearSearchFocus();
         });
+    }
+
+    private void clearSearchFocus() {
+        if (etSearchArtist != null) {
+            etSearchArtist.clearFocus();
+            // Hide keyboard
+            if (getActivity() != null && getActivity().getCurrentFocus() != null) {
+                android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager)
+                        getActivity().getSystemService(android.content.Context.INPUT_METHOD_SERVICE);
+                imm.hideSoftInputFromWindow(getActivity().getCurrentFocus().getWindowToken(), 0);
+            }
+        }
+    }
+
+    private void filterArtists(String query) {
+        List<Artist> baseList = chipAll.isChecked() ? allArtists : followedArtists;
+        
+        if (query.isEmpty()) {
+            filteredArtists = new ArrayList<>(baseList);
+        } else {
+            String lowercaseQuery = query.toLowerCase();
+            filteredArtists = baseList.stream()
+                    .filter(artist -> artist.getName().toLowerCase().contains(lowercaseQuery))
+                    .collect(Collectors.toList());
+        }
+        
+        updateArtistsList(filteredArtists);
+    }
+
+    private void loadArtists() {
+        // Load all artists
+        db.collection("artists").get()
+            .addOnSuccessListener(queryDocumentSnapshots -> {
+                allArtists.clear();
+                for (var doc : queryDocumentSnapshots) {
+                    Artist artist = doc.toObject(Artist.class);
+                    artist.setId(doc.getId());
+                    allArtists.add(artist);
+                }
+                
+                // After loading all artists, load followed artists
+                loadFollowedArtists();
+            })
+            .addOnFailureListener(e -> {
+                Toast.makeText(getContext(), "Lỗi khi tải danh sách nghệ sĩ", Toast.LENGTH_SHORT).show();
+            });
+    }
+
+    private void loadFollowedArtists() {
+        db.collection("users").document(currentUserId)
+            .collection("followedArtists").get()
+            .addOnSuccessListener(queryDocumentSnapshots -> {
+                followedArtists.clear();
+                for (var doc : queryDocumentSnapshots) {
+                    String artistId = doc.getId();
+                    // Find artist in allArtists list
+                    for (Artist artist : allArtists) {
+                        if (artist.getId().equals(artistId)) {
+                            followedArtists.add(artist);
+                            break;
+                        }
+                    }
+                }
+                
+                // Update adapter with followed artists
+                List<String> followedIds = followedArtists.stream()
+                        .map(Artist::getId)
+                        .collect(Collectors.toList());
+                artistAdapter.updateFollowedArtists(followedIds);
+                
+                // Update UI based on current chip selection and search query
+                filterArtists(etSearchArtist.getText().toString());
+            })
+            .addOnFailureListener(e -> {
+                Toast.makeText(getContext(), "Lỗi khi tải danh sách nghệ sĩ đang theo dõi", Toast.LENGTH_SHORT).show();
+            });
+    }
+
+    private void updateArtistsList(List<Artist> artists) {
+        artistAdapter.updateData(artists);
+        showEmptyState(artists.isEmpty());
     }
 
     private void showEmptyState(boolean show) {
         layoutEmptyState.setVisibility(show ? View.VISIBLE : View.GONE);
         rvFollowedArtists.setVisibility(show ? View.GONE : View.VISIBLE);
+    }
+
+    @Override
+    public void onArtistClick(Artist artist) {
+        //
+    }
+
+    @Override
+    public void onFollowClick(Artist artist, boolean isFollowing) {
+        DocumentReference userDoc = db.collection("users").document(currentUserId);
+        DocumentReference artistDoc = db.collection("artists").document(artist.getId());
+
+        if (isFollowing) {
+            // Follow artist
+            userDoc.collection("followedArtists").document(artist.getId())
+                    .set(artist)
+                    .addOnSuccessListener(aVoid -> {
+                        artistDoc.update("followerCount", FieldValue.increment(1));
+                        followedArtists.add(artist);
+                        Toast.makeText(getContext(), "Đã theo dõi " + artist.getName(), Toast.LENGTH_SHORT).show();
+                        
+                        // Update adapter with new followed artists list
+                        List<String> followedIds = followedArtists.stream()
+                                .map(Artist::getId)
+                                .collect(Collectors.toList());
+                        artistAdapter.updateFollowedArtists(followedIds);
+                    })
+                    .addOnFailureListener(e -> {
+                        Toast.makeText(getContext(), "Lỗi khi theo dõi nghệ sĩ", Toast.LENGTH_SHORT).show();
+                        // Revert button state
+                        artistAdapter.updateFollowedArtists(followedArtists.stream()
+                                .map(Artist::getId)
+                                .collect(Collectors.toList()));
+                    });
+        } else {
+            // Unfollow artist
+            userDoc.collection("followedArtists").document(artist.getId())
+                    .delete()
+                    .addOnSuccessListener(aVoid -> {
+                        artistDoc.update("followerCount", FieldValue.increment(-1));
+                        followedArtists.removeIf(a -> a.getId().equals(artist.getId()));
+                        Toast.makeText(getContext(), "Đã hủy theo dõi " + artist.getName(), Toast.LENGTH_SHORT).show();
+                        
+                        // Update adapter with new followed artists list
+                        List<String> followedIds = followedArtists.stream()
+                                .map(Artist::getId)
+                                .collect(Collectors.toList());
+                        artistAdapter.updateFollowedArtists(followedIds);
+                        
+                        // Refresh the list if we're in following tab
+                        if (chipFollowing.isChecked()) {
+                            filterArtists(etSearchArtist.getText().toString());
+                        }
+                    })
+                    .addOnFailureListener(e -> {
+                        Toast.makeText(getContext(), "Lỗi khi hủy theo dõi nghệ sĩ", Toast.LENGTH_SHORT).show();
+                        // Revert button state
+                        artistAdapter.updateFollowedArtists(followedArtists.stream()
+                                .map(Artist::getId)
+                                .collect(Collectors.toList()));
+                    });
+        }
     }
 } 

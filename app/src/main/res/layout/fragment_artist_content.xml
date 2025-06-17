@@ -6,6 +6,9 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="?attr/colorSurface"
+    android:focusableInTouchMode="true"
+    android:clickable="true"
+    android:focusable="true"
     tools:context=".MainFragment.LibraryChildFragment.ArtistContentFragment">
 
     <androidx.core.widget.NestedScrollView
@@ -14,9 +17,13 @@
         android:fillViewport="true">
 
         <LinearLayout
+            android:id="@+id/rootLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:focusableInTouchMode="true"
+            android:clickable="true"
+            android:focusable="true">
 
             <!-- Filter Chips -->
             <com.google.android.material.chip.ChipGroup
@@ -30,46 +37,56 @@
                 app:singleSelection="true">
 
                 <com.google.android.material.chip.Chip
-                    android:id="@+id/chipRecent"
+                    android:id="@+id/chipAll"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Gần đây"
+                    android:text="Tất cả"
                     style="@style/Widget.MaterialComponents.Chip.Choice"/>
 
                 <com.google.android.material.chip.Chip
-                    android:id="@+id/chipAlphabetical"
+                    android:id="@+id/chipFollowing"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="A-Z"
+                    android:text="Đang theo dõi"
                     style="@style/Widget.MaterialComponents.Chip.Choice"/>
             </com.google.android.material.chip.ChipGroup>
 
-            <!-- Search Artist Button -->
+            <!-- Search Bar -->
             <LinearLayout
-                android:id="@+id/layoutSearchArtist"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:padding="16dp"
-                android:gravity="center_vertical"
-                android:background="?attr/selectableItemBackground"
-                android:clickable="true"
-                android:focusable="true">
+                android:gravity="center_vertical">
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:hint="Tìm nghệ sĩ"
+                    app:startIconDrawable="@drawable/ic_search"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etSearchArtist"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="text"
+                        android:imeOptions="actionDone"
+                        android:maxLines="1"/>
+
+                </com.google.android.material.textfield.TextInputLayout>
 
                 <ImageView
+                    android:id="@+id/btnClearSearch"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
-                    android:src="@drawable/ic_search"
-                    android:padding="8dp"
-                    android:background="?attr/colorPrimary"
-                    android:contentDescription="Tìm kiếm nghệ sĩ"/>
+                    android:padding="12dp"
+                    android:src="@drawable/ic_close"
+                    android:visibility="gone"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Clear search"/>
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Tìm nghệ sĩ"
-                    android:textSize="16sp"
-                    android:layout_marginStart="16dp"/>
             </LinearLayout>
 
             <!-- Artists List -->

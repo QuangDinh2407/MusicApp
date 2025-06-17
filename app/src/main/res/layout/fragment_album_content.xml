@@ -34,28 +34,16 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Gần đây"
-                    style="@style/Widget.MaterialComponents.Chip.Choice"/>
+                    android:checkable="true"/>
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/chipAlphabetical"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="A-Z"
-                    style="@style/Widget.MaterialComponents.Chip.Choice"/>
+                    android:checkable="true"/>
 
-                <com.google.android.material.chip.Chip
-                    android:id="@+id/chipArtist"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Nghệ sĩ"
-                    style="@style/Widget.MaterialComponents.Chip.Choice"/>
 
-                <com.google.android.material.chip.Chip
-                    android:id="@+id/chipDownloaded"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Đã tải xuống"
-                    style="@style/Widget.MaterialComponents.Chip.Choice"/>
             </com.google.android.material.chip.ChipGroup>
 
             <!-- Albums Grid -->
@@ -101,5 +89,12 @@
 
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
+
+    <!-- Container for AlbumSongsFragment -->
+    <FrameLayout
+        android:id="@+id/albumSongsContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone"/>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout> 
