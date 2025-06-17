@@ -12,10 +12,15 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
 import com.ck.music_app.MainFragment.ProfileChildFragment.DownloadedFragment;
 import com.ck.music_app.R;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -26,6 +31,10 @@ public class ProfileFragment extends Fragment {
 
     private View mainLayout;
     private View fragmentContainer;
+
+    private ImageView imgAvatar;
+
+    private TextView tvUserName;
     private LocalBroadcastManager broadcaster;
     private DownloadedFragment downloadedFragment;
 
@@ -46,6 +55,9 @@ public class ProfileFragment extends Fragment {
             }
         }
     };
+
+    private FirebaseAuth auth;
+    private FirebaseFirestore db;
 
     public ProfileFragment() {
         // Required empty public constructor
@@ -78,6 +90,10 @@ public class ProfileFragment extends Fragment {
         }
         broadcaster = LocalBroadcastManager.getInstance(requireContext());
         broadcaster.registerReceiver(downloadReceiver, new IntentFilter("OPEN_DOWNLOAD_FRAGMENT"));
+        
+        // Khởi tạo Firebase
+        auth = FirebaseAuth.getInstance();
+        db = FirebaseFirestore.getInstance();
     }
 
     @Override
@@ -87,14 +103,13 @@ public class ProfileFragment extends Fragment {
 
         mainLayout = view.findViewById(R.id.profile_main_layout);
         fragmentContainer = view.findViewById(R.id.profile_fragment_container);
+        imgAvatar = view.findViewById(R.id.imgAvatar);
+        tvUserName = view.findViewById(R.id.tvUserName);
+
         downloadedFragment = new DownloadedFragment();
 
-        // Load avatar
-        ImageView imgAvatar = view.findViewById(R.id.imgAvatar);
-        Glide.with(this)
-                .load(R.drawable.cat_avatar)
-                .circleCrop()
-                .into(imgAvatar);
+        // Load thông tin người dùng từ Firebase
+        loadUserInfo();
 
         // Thêm callback để xử lý khi fragment bị remove
         downloadedFragment.setOnFragmentDismissListener(() -> {
@@ -116,6 +131,61 @@ public class ProfileFragment extends Fragment {
         }
 
         return view;
+    }
+
+    private void loadUserInfo() {
+        FirebaseUser currentUser = auth.getCurrentUser();
+        if (currentUser != null) {
+
+            // Lấy thông tin từ Firestore
+            db.collection("users").document(currentUser.getUid())
+                .get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        // Lấy tên người dùng từ Firestore
+                        String name = documentSnapshot.getString("Name");
+                        if (name != null && !name.isEmpty()) {
+                            tvUserName.setText(name);
+                        } else {
+                            // Nếu không có tên trong Firestore, dùng email từ Firebase Auth
+                            String email = currentUser.getEmail();
+                            tvUserName.setText(email != null ? email : "Unknown User");
+                        }
+
+                        // Load avatar
+                        String photoUrl = currentUser.getPhotoUrl() != null ? 
+                            currentUser.getPhotoUrl().toString() : null;
+                            
+                        if (photoUrl != null && !photoUrl.isEmpty()) {
+                            // Nếu có avatar từ social login (Google/Facebook)
+                            Glide.with(ProfileFragment.this)
+                                .load(photoUrl)
+                                .placeholder(R.drawable.cat_avatar)
+                                .error(R.drawable.cat_avatar)
+                                .circleCrop()
+                                .into(imgAvatar);
+                        } else {
+                            // Nếu không có avatar, load ảnh mặc định
+                            Glide.with(ProfileFragment.this)
+                                .load(R.drawable.cat_avatar)
+                                .circleCrop()
+                                .into(imgAvatar);
+                        }
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Toast.makeText(getContext(), 
+                        "Failed to load user info: " + e.getMessage(), 
+                        Toast.LENGTH_SHORT).show();
+                });
+        } else {
+            // Nếu chưa đăng nhập, hiển thị thông tin mặc định
+            tvUserName.setText("Guest User");
+            Glide.with(this)
+                .load(R.drawable.cat_avatar)
+                .circleCrop()
+                .into(imgAvatar);
+        }
     }
 
     private void openDownloadFragment() {

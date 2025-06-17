@@ -76,6 +76,10 @@ public class LoginActivity extends AppCompatActivity {
     private static final String KEY_REMEMBER = "remember";
     private static final String KEY_EMAIL = "email";
     private static final String KEY_PASSWORD = "password";
+    private static final String KEY_LOGIN_METHOD = "login_method";
+    private static final String LOGIN_METHOD_EMAIL = "email";
+    private static final String LOGIN_METHOD_GOOGLE = "google";
+    private static final String LOGIN_METHOD_FACEBOOK = "facebook";
 
     private Dialog loadingDialog;
 
@@ -200,31 +204,48 @@ public class LoginActivity extends AppCompatActivity {
     private void checkRememberMe() {
         boolean isRemembered = sharedPreferences.getBoolean(KEY_REMEMBER, false);
         if (isRemembered) {
-            String savedEmail = sharedPreferences.getString(KEY_EMAIL, "");
-            String savedPassword = sharedPreferences.getString(KEY_PASSWORD, "");
+            String loginMethod = sharedPreferences.getString(KEY_LOGIN_METHOD, "");
             
-            if (!savedEmail.isEmpty() && !savedPassword.isEmpty()) {
-                showLoading();
-                auth.signInWithEmailAndPassword(savedEmail, savedPassword)
-                    .addOnCompleteListener(this, task -> {
-                        hideLoading();
-                        if (task.isSuccessful()) {
-                            FirebaseUser user = auth.getCurrentUser();
-                            createUserIfNotExists(user);
-                            Intent intent = new Intent(LoginActivity.this, MainActivity.class);
-                            intent.putExtra("email", savedEmail);
-                            startActivity(intent);
-                            finish();
-                        } else {
-                            SharedPreferences.Editor editor = sharedPreferences.edit();
-                            editor.clear();
-                            editor.apply();
-                            
-                            Toast.makeText(LoginActivity.this, 
-                                "Đăng nhập tự động thất bại. Vui lòng đăng nhập lại.", 
-                                Toast.LENGTH_LONG).show();
-                        }
-                    });
+            switch (loginMethod) {
+                case LOGIN_METHOD_EMAIL:
+                    String savedEmail = sharedPreferences.getString(KEY_EMAIL, "");
+                    String savedPassword = sharedPreferences.getString(KEY_PASSWORD, "");
+                    
+                    if (!savedEmail.isEmpty() && !savedPassword.isEmpty()) {
+                        showLoading();
+                        auth.signInWithEmailAndPassword(savedEmail, savedPassword)
+                            .addOnCompleteListener(this, task -> {
+                                hideLoading();
+                                if (task.isSuccessful()) {
+                                    FirebaseUser user = auth.getCurrentUser();
+                                    createUserIfNotExists(user);
+                                    Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                                    intent.putExtra("email", savedEmail);
+                                    startActivity(intent);
+                                    finish();
+                                } else {
+                                    clearLoginInfo();
+                                    Toast.makeText(LoginActivity.this, 
+                                        "Đăng nhập tự động thất bại. Vui lòng đăng nhập lại.", 
+                                        Toast.LENGTH_LONG).show();
+                                }
+                            });
+                    }
+                    break;
+                    
+                case LOGIN_METHOD_GOOGLE:
+                    GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
+                    if (account != null) {
+                        firebaseAuthWithGoogle(account.getIdToken());
+                    }
+                    break;
+                    
+                case LOGIN_METHOD_FACEBOOK:
+                    AccessToken accessToken = AccessToken.getCurrentAccessToken();
+                    if (accessToken != null && !accessToken.isExpired()) {
+                        handleFacebookAccessToken(accessToken);
+                    }
+                    break;
             }
         }
     }
@@ -233,11 +254,32 @@ public class LoginActivity extends AppCompatActivity {
         SharedPreferences.Editor editor = sharedPreferences.edit();
         if (remember) {
             editor.putBoolean(KEY_REMEMBER, true);
+            editor.putString(KEY_LOGIN_METHOD, LOGIN_METHOD_EMAIL);
             editor.putString(KEY_EMAIL, email);
             editor.putString(KEY_PASSWORD, password);
         } else {
-            editor.clear();
+            clearLoginInfo();
         }
+        editor.apply();
+    }
+
+    private void saveGoogleLoginInfo() {
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putBoolean(KEY_REMEMBER, true);
+        editor.putString(KEY_LOGIN_METHOD, LOGIN_METHOD_GOOGLE);
+        editor.apply();
+    }
+
+    private void saveFacebookLoginInfo() {
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putBoolean(KEY_REMEMBER, true);
+        editor.putString(KEY_LOGIN_METHOD, LOGIN_METHOD_FACEBOOK);
+        editor.apply();
+    }
+
+    private void clearLoginInfo() {
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.clear();
         editor.apply();
     }
 
@@ -294,6 +336,7 @@ public class LoginActivity extends AppCompatActivity {
                 .addOnCompleteListener(this, task -> {
                     hideLoading();
                     if (task.isSuccessful()) {
+                        saveGoogleLoginInfo();
                         FirebaseUser user = auth.getCurrentUser();
                         createUserIfNotExists(user);
                         String email = user != null ? user.getEmail() : "";
@@ -358,6 +401,7 @@ public class LoginActivity extends AppCompatActivity {
                 .addOnCompleteListener(this, task -> {
                     hideLoading();
                     if (task.isSuccessful()) {
+                        saveFacebookLoginInfo();
                         FirebaseUser user = auth.getCurrentUser();
                         createUserIfNotExists(user);
                         String email = user != null ? user.getEmail() : "";
@@ -422,42 +466,7 @@ public class LoginActivity extends AppCompatActivity {
             finish();
         } else {
             // Kiểm tra thông tin đăng nhập đã lưu
-            boolean isRemembered = sharedPreferences.getBoolean(KEY_REMEMBER, false);
-            String savedEmail = sharedPreferences.getString(KEY_EMAIL, "");
-            String savedPassword = sharedPreferences.getString(KEY_PASSWORD, "");
-
-            if (isRemembered && !savedEmail.isEmpty() && !savedPassword.isEmpty()) {
-                // Nếu có thông tin đăng nhập đã lưu, thử tự động đăng nhập
-                showLoading();
-                auth.signInWithEmailAndPassword(savedEmail, savedPassword)
-                    .addOnCompleteListener(this, task -> {
-                        hideLoading();
-                        if (task.isSuccessful()) {
-                            Toast.makeText(LoginActivity.this, 
-                                "Đã đăng nhập tự động", 
-                                Toast.LENGTH_SHORT).show();
-                            FirebaseUser user = auth.getCurrentUser();
-                            createUserIfNotExists(user);
-                            Intent intent = new Intent(LoginActivity.this, MainActivity.class);
-                            intent.putExtra("email", savedEmail);
-                            startActivity(intent);
-                            finish();
-                        } else {
-                            // Nếu tự động đăng nhập thất bại, xóa thông tin đã lưu
-                            SharedPreferences.Editor editor = sharedPreferences.edit();
-                            editor.clear();
-                            editor.apply();
-                            
-                            Toast.makeText(LoginActivity.this, 
-                                "Đăng nhập tự động thất bại. Vui lòng đăng nhập lại.", 
-                                Toast.LENGTH_LONG).show();
-                        }
-                    });
-            } else {
-                Toast.makeText(LoginActivity.this, 
-                    "Vui lòng đăng nhập để tiếp tục", 
-                    Toast.LENGTH_SHORT).show();
-            }
+            checkRememberMe();
         }
     }
 
