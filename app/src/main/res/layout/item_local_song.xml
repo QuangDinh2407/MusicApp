@@ -17,11 +17,12 @@
 
         <ImageView
             android:id="@+id/imgMusicIcon"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
+            android:background="@drawable/circle_border"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
             android:layout_gravity="center"
-            android:src="@drawable/ic_music_note"
-            android:tint="#FFFFFF" />
+            android:scaleType="centerCrop"
+            android:src="@drawable/ic_music_note" />
     </FrameLayout>
 
     <TextView

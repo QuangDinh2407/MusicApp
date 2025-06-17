@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:id="@+id/download_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="16dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="16dp"
+        android:background="@drawable/download_progress_background"
+        android:layout_marginHorizontal="0dp"
+        android:layout_marginBottom="0dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/tvDownloadTitle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Đang tải xuống..."
+                android:textSize="14sp"
+                android:textColor="@color/textPrimary"
+                android:textStyle="bold"
+                android:maxLines="1"
+                android:ellipsize="end"/>
+
+            <TextView
+                android:id="@+id/tvDownloadPercent"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0%"
+                android:textSize="12sp"
+                android:textColor="@color/textPrimary"
+                android:layout_marginStart="8dp"/>
+
+            <ImageButton
+                android:id="@+id/btnCancelDownload"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_close_white_24dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:layout_marginStart="8dp"
+                app:tint="@color/textPrimary"/>
+        </LinearLayout>
+
+        <ProgressBar
+            android:id="@+id/progressBar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="4dp"
+            android:layout_marginTop="8dp"
+            android:progressTint="#FF8C00"
+            android:progress="0"/>
+
+    </LinearLayout>
+</FrameLayout> 
