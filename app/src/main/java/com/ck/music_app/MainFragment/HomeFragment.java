@@ -94,6 +94,8 @@ public class HomeFragment extends Fragment {
             });
         });
 
+        loadArtistsAndAlbums();
+
         return view;
     }
 
@@ -106,17 +108,16 @@ public class HomeFragment extends Fragment {
                 artist.setId(artistDoc.getId());
 
                 // Lấy album của nghệ sĩ này
-                db.collection("albums").whereEqualTo("artistId", artist.getId()).get()
-                        .addOnSuccessListener(albumSnapshots -> {
-                            List<Album> albums = new ArrayList<>();
-                            for (QueryDocumentSnapshot albumDoc : albumSnapshots) {
-                                Album album = albumDoc.toObject(Album.class);
-                                album.setId(albumDoc.getId());
-                                albums.add(album);
-                            }
-                            artistWithAlbumsList.add(new ArtistWithAlbums(artist, albums));
-                            artistAlbumAdapter.notifyDataSetChanged();
-                        });
+                db.collection("albums").whereEqualTo("artistId", artist.getId()).get().addOnSuccessListener(albumSnapshots -> {
+                    List<Album> albums = new ArrayList<>();
+                    for (QueryDocumentSnapshot albumDoc : albumSnapshots) {
+                        Album album = albumDoc.toObject(Album.class);
+                        album.setId(albumDoc.getId());
+                        albums.add(album);
+                    }
+                    artistWithAlbumsList.add(new ArtistWithAlbums(artist, albums));
+                    artistAlbumAdapter.notifyDataSetChanged();
+                });
             }
         });
     }

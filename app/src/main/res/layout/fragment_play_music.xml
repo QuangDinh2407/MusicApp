@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<<<<<<< HEAD
+=======
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+>>>>>>> origin/QDinh
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -13,7 +17,12 @@
         android:layout_height="match_parent"
         android:background="@android:color/transparent"
         android:layout_marginTop="30dp"
+<<<<<<< HEAD
         android:padding="16dp">
+=======
+        android:paddingHorizontal="16dp"
+        android:paddingTop="16dp">
+>>>>>>> origin/QDinh
 
         <FrameLayout
             android:layout_width="371dp"
@@ -40,7 +49,11 @@
                     android:background="@drawable/circle_border"
                     android:src="@drawable/test1"
                     android:scaleType="centerCrop"
+<<<<<<< HEAD
                     android:clipToOutline="true"/>
+=======
+                    android:clipToOutline="true" />
+>>>>>>> origin/QDinh
 
             </FrameLayout>
         </FrameLayout>
@@ -53,7 +66,11 @@
             android:textStyle="bold"
             android:textSize="20sp"
             android:layout_gravity="center_horizontal"
+<<<<<<< HEAD
             android:layout_marginTop="24dp"/>
+=======
+            android:layout_marginTop="24dp" />
+>>>>>>> origin/QDinh
 
         <TextView
             android:id="@+id/tvArtist"
@@ -62,7 +79,38 @@
             android:text="Nghệ sĩ"
             android:textSize="16sp"
             android:layout_gravity="center_horizontal"
+<<<<<<< HEAD
             android:layout_marginTop="4dp"/>
+=======
+            android:layout_marginTop="4dp" />
+
+        <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:layout_marginTop="16dp">
+
+            <ImageButton
+                android:id="@+id/btnAddToPlaylist"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:src="@drawable/ic_playlist_add_white_24dp"
+                android:background="@android:color/transparent"
+                android:layout_marginHorizontal="24dp"
+                android:padding="4dp" />
+
+            <ImageButton
+                android:id="@+id/btnDownload"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:src="@drawable/ic_download_white_24dp"
+                android:background="@android:color/transparent"
+                android:layout_marginHorizontal="24dp"
+                app:tint="@color/player_button_color"
+                android:padding="4dp" />
+        </LinearLayout>
+>>>>>>> origin/QDinh
 
         <LinearLayout
             android:orientation="horizontal"
@@ -75,21 +123,33 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="00:00"
+<<<<<<< HEAD
                 android:textSize="14sp"/>
+=======
+                android:textSize="14sp" />
+>>>>>>> origin/QDinh
 
             <SeekBar
                 android:id="@+id/seekBar"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+<<<<<<< HEAD
                 android:layout_marginHorizontal="8dp"/>
+=======
+                android:layout_marginHorizontal="8dp" />
+>>>>>>> origin/QDinh
 
             <TextView
                 android:id="@+id/tvTotalTime"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="00:00"
+<<<<<<< HEAD
                 android:textSize="14sp"/>
+=======
+                android:textSize="14sp" />
+>>>>>>> origin/QDinh
         </LinearLayout>
 
         <LinearLayout
@@ -97,14 +157,32 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center"
+<<<<<<< HEAD
             android:layout_marginTop="32dp">
+=======
+            android:layout_marginTop="24dp">
+
+            <ImageButton
+                android:id="@+id/btnShuffle"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:src="@drawable/ic_shuffle_white_24dp"
+                android:background="@android:color/transparent"
+                android:layout_marginEnd="24dp"
+                android:padding="2dp"
+                app:tint="@color/player_button_color" />
+>>>>>>> origin/QDinh
 
             <ImageButton
                 android:id="@+id/btnPrevious"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:src="@drawable/ic_skip_previous_white_36dp"
+<<<<<<< HEAD
                 android:background="@android:color/transparent"/>
+=======
+                android:background="@android:color/transparent" />
+>>>>>>> origin/QDinh
 
             <ImageButton
                 android:id="@+id/btnPlayPause"
@@ -112,15 +190,44 @@
                 android:layout_height="64dp"
                 android:src="@drawable/ic_play_white_36dp"
                 android:background="@android:color/transparent"
+<<<<<<< HEAD
                 android:layout_marginHorizontal="32dp"/>
+=======
+                android:layout_marginHorizontal="16dp" />
+>>>>>>> origin/QDinh
 
             <ImageButton
                 android:id="@+id/btnNext"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:src="@drawable/ic_skip_next_white_36dp"
+<<<<<<< HEAD
                 android:background="@android:color/transparent"/>
         </LinearLayout>
     </LinearLayout>
 
+=======
+                android:background="@android:color/transparent" />
+
+            <ImageButton
+                android:id="@+id/btnRepeat"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:src="@drawable/ic_no_repeat_white_24dp"
+                android:background="@android:color/transparent"
+                android:layout_marginStart="24dp"
+                android:padding="2dp"
+                app:tint="@color/player_button_color" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Container cho view download -->
+    <FrameLayout
+        android:id="@+id/downloadContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:layout_marginBottom="0dp"/>
+
+>>>>>>> origin/QDinh
 </FrameLayout>

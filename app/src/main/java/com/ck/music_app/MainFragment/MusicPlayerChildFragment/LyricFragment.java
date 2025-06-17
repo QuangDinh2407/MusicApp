@@ -165,7 +165,6 @@ public class LyricFragment extends Fragment {
     }
 
     private void updateUI(String lyric) {
-
         if (lyric != null) {
             List<LyricLine> lyricLines = parseLyrics(lyric);
             lyricAdapter.setLyrics(lyricLines);

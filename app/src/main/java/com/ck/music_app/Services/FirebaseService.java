@@ -18,16 +18,19 @@ public class FirebaseService {
     private static final String PLAYLISTS_COLLECTION = "playlists";
     private static final String USERS_COLLECTION = "users";
 
-    private static final FirebaseFirestore db = FirebaseFirestore.getInstance();
-
-    // Singleton instance
     private static FirebaseService instance;
+    private final FirebaseAuth mAuth;
+    private final FirebaseFirestore db;
 
-    // Private constructor
     private FirebaseService() {
     }
 
-    // Public method to get instance
+
+    private FirebaseService() {
+        mAuth = FirebaseAuth.getInstance();
+        db = FirebaseFirestore.getInstance();
+    }
+
     public static synchronized FirebaseService getInstance() {
         if (instance == null) {
             instance = new FirebaseService();
@@ -37,7 +40,6 @@ public class FirebaseService {
 
     // Authentication methods
     public void registerWithEmail(String email, String password, OnAuthCallback callback) {
-        FirebaseAuth mAuth = FirebaseAuth.getInstance();
         mAuth.createUserWithEmailAndPassword(email, password)
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
@@ -54,7 +56,6 @@ public class FirebaseService {
     }
 
     public void loginWithEmail(String email, String password, OnAuthCallback callback) {
-        FirebaseAuth mAuth = FirebaseAuth.getInstance();
         mAuth.signInWithEmailAndPassword(email, password)
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
@@ -71,7 +72,6 @@ public class FirebaseService {
     }
 
     public void loginWithGoogle(String idToken, OnAuthCallback callback) {
-        FirebaseAuth mAuth = FirebaseAuth.getInstance();
         AuthCredential credential = GoogleAuthProvider.getCredential(idToken, null);
         mAuth.signInWithCredential(credential)
                 .addOnCompleteListener(task -> {
@@ -92,13 +92,11 @@ public class FirebaseService {
                                                 createUserIfNotExists(user);
                                                 callback.onSuccess(user);
                                             } else {
-                                                callback.onError("Liên kết Google thất bại: "
-                                                        + linkTask.getException().getMessage());
+                                                callback.onError("Liên kết Google thất bại: " + linkTask.getException().getMessage());
                                             }
                                         });
                             } else {
-                                callback.onError(
-                                        "Vui lòng đăng nhập bằng Facebook hoặc Email trước để liên kết Google.");
+                                callback.onError("Vui lòng đăng nhập bằng Facebook hoặc Email trước để liên kết Google.");
                             }
                         } else {
                             callback.onError("Đăng nhập Google không thành công: " + e.getMessage());
@@ -108,7 +106,6 @@ public class FirebaseService {
     }
 
     public void loginWithFacebook(String token, OnAuthCallback callback) {
-        FirebaseAuth mAuth = FirebaseAuth.getInstance();
         AuthCredential credential = FacebookAuthProvider.getCredential(token);
         mAuth.signInWithCredential(credential)
                 .addOnCompleteListener(task -> {
@@ -129,8 +126,7 @@ public class FirebaseService {
                                                 createUserIfNotExists(user);
                                                 callback.onSuccess(user);
                                             } else {
-                                                callback.onError("Liên kết Facebook thất bại: "
-                                                        + linkTask.getException().getMessage());
+                                                callback.onError("Liên kết Facebook thất bại: " + linkTask.getException().getMessage());
                                             }
                                         });
                             } else {
@@ -144,14 +140,12 @@ public class FirebaseService {
     }
 
     public void logout() {
-        FirebaseAuth mAuth = FirebaseAuth.getInstance();
         mAuth.signOut();
     }
 
     // Firestore methods
     private void createUserInFirestore(FirebaseUser user) {
-        if (user == null)
-            return;
+        if (user == null) return;
         Map<String, Object> userMap = new HashMap<>();
         userMap.put("DateOfBirth", "");
         userMap.put("Email", user.getEmail() != null ? user.getEmail() : "");
@@ -161,8 +155,7 @@ public class FirebaseService {
     }
 
     private void createUserIfNotExists(FirebaseUser user) {
-        if (user == null)
-            return;
+        if (user == null) return;
         db.collection(USERS_COLLECTION)
                 .document(user.getUid())
                 .get()
@@ -241,7 +234,7 @@ public class FirebaseService {
 
     private void getSongsByIds(List<String> songIds, FirestoreCallback<List<Song>> callback) {
         List<Song> songs = new ArrayList<>();
-        int[] completedCount = { 0 };
+        int[] completedCount = {0};
 
         for (String songId : songIds) {
             db.collection(SONGS_COLLECTION)

@@ -45,28 +45,29 @@ public class MusicService extends Service {
     public static final String NOTIFICATION_CHANNEL_ID = "music_player_channel";
     public static final int NOTIFICATION_ID = 1;
 
+    public static final String ACTION_TOGGLE_SHUFFLE = "com.ck.music_app.action.TOGGLE_SHUFFLE";
+    public static final String ACTION_TOGGLE_REPEAT = "com.ck.music_app.action.TOGGLE_REPEAT";
+
     // Broadcast actions
     public static final String BROADCAST_PLAYING_STATE = "com.ck.music_app.PLAYING_STATE";
     public static final String BROADCAST_SONG_CHANGED = "com.ck.music_app.SONG_CHANGED";
     public static final String BROADCAST_PROGRESS = "com.ck.music_app.PROGRESS";
     public static final String BROADCAST_LOADING_STATE = "com.ck.music_app.LOADING_STATE";
     public static final String BROADCAST_LYRIC_POSITION = "com.ck.music_app.LYRIC_POSITION";
+    public static final String BROADCAST_PLAYLIST_CHANGED = "com.ck.music_app.PLAYLIST_CHANGED";
 
     private MediaPlayer mediaPlayer;
-    private List<Song> songList = new ArrayList<>();
+    private static List<Song> songList = new ArrayList<>();
     private int currentIndex = 0;
     private boolean isPlaying = false;
-    private boolean isMuted = false;
-    private float volumeBeforeMute = 1.0f;
     private LocalBroadcastManager broadcaster;
     private Handler lyricHandler;
     private static final int LYRIC_UPDATE_INTERVAL = 100; // 100ms
+    private static Song currentSong;
 
-    // Notification related
-    private NotificationManager notificationManager;
-    private MediaSessionCompat mediaSession;
-    private int currentProgress = 0;
-    private int currentDuration = 0;
+    private boolean isShuffleOn = false;
+    private int repeatMode = 0; // 0: no repeat, 1: repeat all, 2: repeat one
+    private List<Song> originalSongList = new ArrayList<>(); // Lưu danh sách gốc
 
     @Override
     public void onCreate() {
@@ -90,6 +91,28 @@ public class MusicService extends Service {
                 stopSelf();
             }
         });
+        initializeMediaPlayer();
+        lyricHandler = new Handler(Looper.getMainLooper());
+    }
+
+    private void initializeMediaPlayer() {
+        if (mediaPlayer == null) {
+            mediaPlayer = new MediaPlayer();
+            mediaPlayer.setOnCompletionListener(mp -> {
+                // Auto play next song when current song completes
+                if (currentIndex < songList.size() - 1) {
+                    playNext();
+                } else {
+                    stopSelf();
+                }
+            });
+
+            mediaPlayer.setOnErrorListener((mp, what, extra) -> {
+                Log.e(TAG, "MediaPlayer error: " + what + ", " + extra);
+                broadcastLoadingState(false);
+                return false;
+            });
+        }
     }
 
     @Override
@@ -123,6 +146,13 @@ public class MusicService extends Service {
                     break;
                 case ACTION_MUTE:
                     toggleMute();
+                case ACTION_TOGGLE_SHUFFLE:
+                    boolean isShuffleOn = intent.getBooleanExtra("isShuffleOn", false);
+                    handleShuffleMode(isShuffleOn);
+                    break;
+                case ACTION_TOGGLE_REPEAT:
+                    int repeatMode = intent.getIntExtra("repeatMode", 0);
+                    handleRepeatMode(repeatMode);
                     break;
             }
         }
@@ -162,6 +192,56 @@ public class MusicService extends Service {
 
         } catch (Exception e) {
             e.printStackTrace();
+        if (index < 0 || index >= songList.size()) return;
+
+        try {
+            // Đảm bảo MediaPlayer được khởi tạo
+            initializeMediaPlayer();
+            
+            // Reset và chuẩn bị MediaPlayer
+            mediaPlayer.reset();
+            Song song = songList.get(index);
+            currentSong = song;
+            currentIndex = index;
+            broadcastLoadingState(true);
+            broadcastSongChanged(currentIndex);
+
+            try {
+                // Kiểm tra xem URL có phải là local URI không
+                if (song.getAudioUrl().startsWith("content://")) {
+                    // Sử dụng ContentResolver để lấy FileDescriptor cho local files
+                    Uri uri = Uri.parse(song.getAudioUrl());
+                    AssetFileDescriptor afd = getContentResolver().openAssetFileDescriptor(uri, "r");
+                    if (afd != null) {
+                        mediaPlayer.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength());
+                        afd.close();
+                    }
+                } else {
+                    // Sử dụng URL trực tiếp cho online files
+                    mediaPlayer.setDataSource(song.getAudioUrl());
+                }
+
+                mediaPlayer.prepareAsync();
+                
+                mediaPlayer.setOnPreparedListener(mp -> {
+                    try {
+                        mediaPlayer.start();
+                        isPlaying = true;
+                        startProgressUpdates();
+                        broadcastPlayingState(true);
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error starting playback: " + e.getMessage());
+                    } finally {
+                        broadcastLoadingState(false);
+                    }
+                });
+            } catch (Exception e) {
+                Log.e(TAG, "Error setting data source: " + e.getMessage());
+                broadcastLoadingState(false);
+                Toast.makeText(this, "Không thể phát bài hát này", Toast.LENGTH_SHORT).show();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error in playSong: " + e.getMessage());
             broadcastLoadingState(false);
         }
     }
@@ -188,28 +268,63 @@ public class MusicService extends Service {
             isPlaying = false;
             stopLyricUpdates();
             broadcastPlayingState(false);
-            showNotification();
         }
     }
 
-    private void playPrevious() {
-        if (currentIndex > 0) {
-            currentIndex--;
-            // Reset progress values for new song
-            currentProgress = 0;
-            currentDuration = 0;
+    public void playNext() {
+        if (songList.isEmpty()) return;
+
+        if (repeatMode == 2) {
+            // Repeat One: phát lại bài hiện tại
             playSong(currentIndex);
+            return;
         }
+
+        currentIndex++;
+
+        // Kiểm tra nếu đã hết danh sách
+        if (currentIndex >= songList.size()) {
+            if (repeatMode == 1) {
+                // Repeat All: quay lại bài đầu tiên
+                currentIndex = 0;
+            } else {
+                System.out.println("stop");
+                // No Repeat: dừng phát nhạc
+                currentIndex = songList.size() - 1;
+                pauseMusic();
+                seekTo(0);
+                return;
+            }
+        }
+
+        playSong(currentIndex);
+
     }
 
-    private void playNext() {
-        if (currentIndex < songList.size() - 1) {
-            currentIndex++;
-            // Reset progress values for new song
-            currentProgress = 0;
-            currentDuration = 0;
+    public void playPrevious() {
+        if (songList.isEmpty()) return;
+
+        if (repeatMode == 2) {
+            // Repeat One: phát lại bài hiện tại
             playSong(currentIndex);
+            return;
         }
+
+        currentIndex--;
+
+        // Kiểm tra nếu đã về đầu danh sách
+        if (currentIndex < 0) {
+            if (repeatMode == 1) {
+                // Repeat All: chuyển đến bài cuối cùng
+                currentIndex = songList.size() - 1;
+            } else {
+                // No Repeat: ở lại bài đầu tiên
+                currentIndex = 0;
+                return;
+            }
+        }
+
+        playSong(currentIndex);
     }
 
     private void seekTo(int position) {
@@ -218,33 +333,86 @@ public class MusicService extends Service {
         }
     }
 
-    private void toggleMute() {
-        if (mediaPlayer != null) {
-            if (isMuted) {
-                // Unmute
-                mediaPlayer.setVolume(volumeBeforeMute, volumeBeforeMute);
-                isMuted = false;
-            } else {
-                // Mute
-                volumeBeforeMute = 1.0f; // Store current volume
-                mediaPlayer.setVolume(0.0f, 0.0f);
-                isMuted = true;
+    private void handleShuffleMode(boolean isShuffleOn) {
+        this.isShuffleOn = isShuffleOn;
+        
+        Song currentSong = songList.get(currentIndex);
+        
+        if (isShuffleOn) {
+            // Lưu danh sách gốc nếu chưa có
+            if (originalSongList.isEmpty()) {
+                originalSongList = new ArrayList<>(songList);
             }
-            showNotification(); // Update notification to reflect mute state
+            
+            // Tạo và xáo trộn danh sách mới
+            List<Song> shuffledList = new ArrayList<>(songList);
+            Collections.shuffle(shuffledList);
+            
+            // Đảm bảo bài hát hiện tại vẫn ở vị trí currentIndex
+            shuffledList.remove(currentSong);
+            shuffledList.add(currentIndex, currentSong);
+            
+            // Cập nhật danh sách phát
+            songList = shuffledList;
+        } else {
+            // Khôi phục lại danh sách gốc
+            if (!originalSongList.isEmpty()) {
+                songList = new ArrayList<>(originalSongList);
+                // Tìm vị trí mới của bài hát hiện tại trong danh sách gốc
+                currentIndex = songList.indexOf(currentSong);
+            }
         }
+
+        // Broadcast playlist changed
+        broadcastPlaylistChanged();
+
+    }
+
+    private void handleRepeatMode(int repeatMode) {
+        this.repeatMode = repeatMode;
+
+        // Cập nhật MediaPlayer completion listener dựa trên chế độ lặp lại
+        mediaPlayer.setOnCompletionListener(mp -> {
+            switch (repeatMode) {
+                case 0: // Không lặp lại
+                    if (currentIndex < songList.size() - 1) {
+                        playNext();
+                    } else {
+                        // Dừng phát nhạc khi hết danh sách
+                        pauseMusic();
+                        seekTo(0);
+                    }
+                    break;
+
+                case 1: // Lặp lại tất cả
+                    playNext();
+                    break;
+
+                case 2: // Lặp lại một bài
+                    // Phát lại bài hiện tại
+                    playSong(currentIndex);
+                    break;
+            }
+        });
     }
 
     private void startProgressUpdates() {
         // Cập nhật progress bar mỗi giây
         new Thread(() -> {
-            while (isPlaying && mediaPlayer != null) {
+            while (true) {
                 try {
-                    Thread.sleep(1000);
+                    if (mediaPlayer == null || !isPlaying) {
+                        break;
+                    }
+                    
                     if (mediaPlayer.isPlaying()) {
                         broadcastProgress(mediaPlayer.getCurrentPosition(), mediaPlayer.getDuration());
                     }
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+                    
+                    Thread.sleep(1000);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error in progress updates: " + e.getMessage());
+                    break;
                 }
             }
         }).start();
@@ -314,6 +482,14 @@ public class MusicService extends Service {
     private void broadcastLoadingState(boolean isLoading) {
         Intent intent = new Intent(BROADCAST_LOADING_STATE);
         intent.putExtra("isLoading", isLoading);
+        broadcaster.sendBroadcast(intent);
+    }
+
+    private void broadcastPlaylistChanged() {
+        Intent intent = new Intent(BROADCAST_PLAYLIST_CHANGED);
+        intent.putExtra("songList", new ArrayList<>(songList));
+        intent.putExtra("currentIndex", currentIndex);
+        intent.putExtra("isShuffleOn", isShuffleOn);
         broadcaster.sendBroadcast(intent);
     }
 
