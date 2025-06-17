@@ -39,9 +39,10 @@ public class MusicService extends Service {
     public static final String BROADCAST_PROGRESS = "com.ck.music_app.PROGRESS";
     public static final String BROADCAST_LOADING_STATE = "com.ck.music_app.LOADING_STATE";
     public static final String BROADCAST_LYRIC_POSITION = "com.ck.music_app.LYRIC_POSITION";
+    public static final String BROADCAST_PLAYLIST_CHANGED = "com.ck.music_app.PLAYLIST_CHANGED";
 
     private MediaPlayer mediaPlayer;
-    private List<Song> songList = new ArrayList<>();
+    private static List<Song> songList = new ArrayList<>();
     private int currentIndex = 0;
     private boolean isPlaying = false;
     private LocalBroadcastManager broadcaster;
@@ -135,8 +136,7 @@ public class MusicService extends Service {
             currentSong = song;
             currentIndex = index;
             broadcastLoadingState(true);
-
-
+            broadcastSongChanged(currentIndex);
 
             try {
                 // Kiểm tra xem URL có phải là local URI không
@@ -161,7 +161,6 @@ public class MusicService extends Service {
                         isPlaying = true;
                         startProgressUpdates();
                         broadcastPlayingState(true);
-                        broadcastSongChanged(currentIndex);
                     } catch (Exception e) {
                         Log.e(TAG, "Error starting playback: " + e.getMessage());
                     } finally {
@@ -262,7 +261,37 @@ public class MusicService extends Service {
 
     private void handleShuffleMode(boolean isShuffleOn) {
         this.isShuffleOn = isShuffleOn;
-        System.out.println("MusicService - Shuffle mode: " + isShuffleOn);
+        
+        Song currentSong = songList.get(currentIndex);
+        
+        if (isShuffleOn) {
+            // Lưu danh sách gốc nếu chưa có
+            if (originalSongList.isEmpty()) {
+                originalSongList = new ArrayList<>(songList);
+            }
+            
+            // Tạo và xáo trộn danh sách mới
+            List<Song> shuffledList = new ArrayList<>(songList);
+            Collections.shuffle(shuffledList);
+            
+            // Đảm bảo bài hát hiện tại vẫn ở vị trí currentIndex
+            shuffledList.remove(currentSong);
+            shuffledList.add(currentIndex, currentSong);
+            
+            // Cập nhật danh sách phát
+            songList = shuffledList;
+        } else {
+            // Khôi phục lại danh sách gốc
+            if (!originalSongList.isEmpty()) {
+                songList = new ArrayList<>(originalSongList);
+                // Tìm vị trí mới của bài hát hiện tại trong danh sách gốc
+                currentIndex = songList.indexOf(currentSong);
+            }
+        }
+
+        // Broadcast playlist changed
+        broadcastPlaylistChanged();
+
     }
 
     private void handleRepeatMode(int repeatMode) {
@@ -368,6 +397,14 @@ public class MusicService extends Service {
         broadcaster.sendBroadcast(intent);
     }
 
+    private void broadcastPlaylistChanged() {
+        Intent intent = new Intent(BROADCAST_PLAYLIST_CHANGED);
+        intent.putExtra("songList", new ArrayList<>(songList));
+        intent.putExtra("currentIndex", currentIndex);
+        intent.putExtra("isShuffleOn", isShuffleOn);
+        broadcaster.sendBroadcast(intent);
+    }
+
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
@@ -394,5 +431,17 @@ public class MusicService extends Service {
 
     public static Song getCurrentSong() {
         return currentSong;
+    }
+
+    public static List<Song> getCurrentPlaylist() {
+        return songList;
+    }
+
+    public  int getCurrentIndex() {
+        return currentIndex;
+    }
+
+    public  boolean isShuffleEnabled() {
+        return isShuffleOn;
     }
 } 

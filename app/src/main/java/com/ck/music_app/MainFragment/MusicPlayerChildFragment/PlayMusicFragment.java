@@ -96,6 +96,13 @@ public class PlayMusicFragment extends Fragment {
                     boolean isLoading = intent.getBooleanExtra("isLoading", false);
                     updateLoadingState(isLoading);
                     break;
+                case MusicService.BROADCAST_PLAYLIST_CHANGED:
+                    updatePlaylistState(
+                        (List<Song>) intent.getSerializableExtra("songList"),
+                        intent.getIntExtra("currentIndex", 0),
+                        intent.getBooleanExtra("isShuffleOn", false)
+                    );
+                    break;
             }
         }
     };
@@ -104,10 +111,9 @@ public class PlayMusicFragment extends Fragment {
         // Required empty public constructor
     }
 
-    public static PlayMusicFragment newInstance(List<Song> songs, int currentIndex) {
+    public static PlayMusicFragment newInstance(int currentIndex) {
         PlayMusicFragment fragment = new PlayMusicFragment();
         Bundle args = new Bundle();
-        args.putSerializable("songList", new ArrayList<>(songs));
         args.putInt("currentIndex", currentIndex);
         fragment.setArguments(args);
         return fragment;
@@ -117,7 +123,6 @@ public class PlayMusicFragment extends Fragment {
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (getArguments() != null) {
-            songList = (List<Song>) getArguments().getSerializable("songList");
             currentIndex = getArguments().getInt("currentIndex", 0);
         }
         broadcaster = LocalBroadcastManager.getInstance(requireContext());
@@ -130,7 +135,13 @@ public class PlayMusicFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_play_music, container, false);
         initViews(view);
         initListeners();
-        loadSong(currentIndex);
+        
+        // Lấy thông tin bài hát hiện tại từ Service
+        Song currentSong = MusicService.getCurrentSong();
+        if (currentSong != null) {
+            updateUI(currentSong);
+        }
+        
         return view;
     }
 
@@ -240,41 +251,17 @@ public class PlayMusicFragment extends Fragment {
     }
 
     private void loadSong(int index) {
-        Song song = songList.get(index);
-        
-        tvTitle.setText(song.getTitle());
-        tvArtist.setText(song.getArtistId());
+        List<Song> currentPlaylist = MusicService.getCurrentPlaylist();
+        if (currentPlaylist != null && !currentPlaylist.isEmpty() && index >= 0 && index < currentPlaylist.size()) {
+            Song song = currentPlaylist.get(index);
+            updateUI(song);
 
-        // Load ảnh với xử lý lỗi tốt hơn
-        String coverUrl = song.getCoverUrl();
-        if (coverUrl != null && !coverUrl.isEmpty()) {
-            Log.d("PlayMusicFragment", "Loading cover from: " + coverUrl);
-            Glide.with(this)
-                    .load(coverUrl)
-                    .placeholder(R.mipmap.ic_launcher_new)
-                    .error(R.mipmap.ic_launcher_new)
-                    .circleCrop()
-                    .into(imgCover);
-        } else {
-            Log.w("PlayMusicFragment", "No cover URL, using default");
-            imgCover.setImageResource(R.mipmap.ic_launcher_new);
+            // Gửi yêu cầu phát nhạc đến Service
+            Intent intent = new Intent(requireContext(), MusicService.class);
+            intent.setAction(MusicService.ACTION_PLAY);
+            intent.putExtra("position", index);
+            requireContext().startService(intent);
         }
-
-        // Reset rotation state
-        if (isVinylRotating) {
-            stopVinylRotation();
-            stopCoverRotation();
-        }
-        currentRotating = 0f;
-        imgVinyl.setRotation(0f);
-        imgCover.setRotation(0f);
-
-        // Start playing the song through service
-        Intent intent = new Intent(requireContext(), MusicService.class);
-        intent.setAction(MusicService.ACTION_PLAY);
-        intent.putExtra("songList", new ArrayList<>(songList));
-        intent.putExtra("position", index);
-        requireContext().startService(intent);
     }
 
     private void updateLoadingState(boolean isLoading) {
@@ -301,32 +288,31 @@ public class PlayMusicFragment extends Fragment {
 
     private void updateCurrentSong(int position) {
         currentIndex = position;
-        Song song = songList.get(position);
-        updateUI(song);
-        
-        // Broadcast song info update với xử lý null
-        Intent intent = new Intent("UPDATE_SONG_INFO");
-        
-        String coverUrl = song.getCoverUrl();
-        if (coverUrl != null && !coverUrl.isEmpty()) {
-            intent.putExtra("COVER_URL", coverUrl);
-            Log.d("PlayMusicFragment", "Broadcasting cover URL: " + coverUrl);
-        } else {
-            String defaultCover = "android.resource://" + requireContext().getPackageName() + "/mipmap/ic_launcher_new";
-            intent.putExtra("COVER_URL", defaultCover);
-            Log.w("PlayMusicFragment", "Using default cover");
+        List<Song> currentPlaylist = MusicService.getCurrentPlaylist();
+        if (currentPlaylist != null && position < currentPlaylist.size()) {
+            Song song = currentPlaylist.get(position);
+            updateUI(song);
+            
+            // Broadcast song info update
+            Intent intent = new Intent("UPDATE_SONG_INFO");
+            
+            String coverUrl = song.getCoverUrl();
+            if (coverUrl != null && !coverUrl.isEmpty()) {
+                intent.putExtra("COVER_URL", coverUrl);
+            } else {
+                String defaultCover = "android.resource://" + requireContext().getPackageName() + "/mipmap/ic_launcher_new";
+                intent.putExtra("COVER_URL", defaultCover);
+            }
+            
+            String lyrics = song.getLyrics();
+            if (lyrics != null && !lyrics.isEmpty()) {
+                intent.putExtra("LYRIC", lyrics);
+            } else {
+                intent.putExtra("LYRIC", "Chưa có lời bài hát");
+            }
+            
+            LocalBroadcastManager.getInstance(requireContext()).sendBroadcast(intent);
         }
-        
-        String lyrics = song.getLyrics();
-        if (lyrics != null && !lyrics.isEmpty()) {
-            intent.putExtra("LYRIC", lyrics);
-            Log.d("PlayMusicFragment", "Broadcasting lyrics: " + lyrics.substring(0, Math.min(50, lyrics.length())) + "...");
-        } else {
-            intent.putExtra("LYRIC", "Chưa có lời bài hát");
-            Log.w("PlayMusicFragment", "No lyrics available");
-        }
-        
-        LocalBroadcastManager.getInstance(requireContext()).sendBroadcast(intent);
     }
 
     private void updateProgress(int progress, int duration) {
@@ -365,62 +351,26 @@ public class PlayMusicFragment extends Fragment {
         filter.addAction(MusicService.BROADCAST_SONG_CHANGED);
         filter.addAction(MusicService.BROADCAST_PROGRESS);
         filter.addAction(MusicService.BROADCAST_LOADING_STATE);
+        filter.addAction(MusicService.BROADCAST_PLAYLIST_CHANGED);
         broadcaster.registerReceiver(musicReceiver, filter);
     }
 
-    public void updateSongList(List<Song> newSongList, int newIndex) {
-        this.songList = new ArrayList<>(newSongList);
-        this.currentIndex = newIndex;
-        loadSong(currentIndex);
+    private void updatePlaylistState(List<Song> newSongList, int newIndex, boolean shuffleState) {
+        currentIndex = newIndex;
+        isShuffleOn = shuffleState;
+        btnShuffle.setSelected(isShuffleOn);
+        updateCurrentSong(currentIndex);
     }
 
     private void toggleShuffle() {
         isShuffleOn = !isShuffleOn;
         btnShuffle.setSelected(isShuffleOn);
-        
-        Song currentSong = songList.get(currentIndex);
-        
-        if (isShuffleOn) {
-            // Lưu danh sách gốc nếu chưa có
-            if (originalSongList.isEmpty()) {
-                originalSongList = new ArrayList<>(songList);
-            }
-            
-            // Tạo và xáo trộn danh sách mới
-            List<Song> shuffledList = new ArrayList<>(songList);
-            Collections.shuffle(shuffledList);
-            
-            // Đảm bảo bài hát hiện tại vẫn ở vị trí currentIndex
-            shuffledList.remove(currentSong);
-            shuffledList.add(currentIndex, currentSong);
-            
-            // Cập nhật danh sách phát
-            songList = shuffledList;
-        } else {
-            // Khôi phục lại danh sách gốc
-            if (!originalSongList.isEmpty()) {
-                songList = new ArrayList<>(originalSongList);
-                // Tìm vị trí mới của bài hát hiện tại trong danh sách gốc
-                currentIndex = songList.indexOf(currentSong);
-            }
-        }
 
-        // Gửi danh sách mới cho Service
+        // Gửi yêu cầu toggle shuffle đến Service
         Intent intent = new Intent(requireContext(), MusicService.class);
-        intent.setAction(MusicService.ACTION_PLAY);
-        intent.putExtra("songList", new ArrayList<>(songList));
-        intent.putExtra("position", currentIndex);
+        intent.setAction(MusicService.ACTION_TOGGLE_SHUFFLE);
+        intent.putExtra("isShuffleOn", isShuffleOn);
         requireContext().startService(intent);
-
-        // Hiển thị thông báo
-        String message = isShuffleOn ? "Đã bật phát ngẫu nhiên" : "Đã tắt phát ngẫu nhiên";
-        Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
-
-        // Debug log
-        System.out.println("PlayMusicFragment - Shuffle mode: " + isShuffleOn + ", Current index: " + currentIndex);
-        for (int i = 0; i < songList.size(); i++) {
-            System.out.println("PlayMusicFragment - Song " + i + ": " + songList.get(i).getSongId());
-        }
     }
 
     private void toggleRepeat() {

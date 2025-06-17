@@ -87,6 +87,10 @@ public class MusicPlayerFragment extends Fragment {
     private Thread downloadThread;
     private boolean isDownloading = false;
 
+    private PlayMusicFragment playMusicFragment;
+    private LyricFragment lyricFragment;
+    private boolean isPlayerVisible = false;
+
     private final BroadcastReceiver musicReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -142,7 +146,7 @@ public class MusicPlayerFragment extends Fragment {
         tvAlbumName.setText(albumName);
 
         fragments = new Fragment[]{
-                PlayMusicFragment.newInstance(songList, currentIndex),
+                PlayMusicFragment.newInstance(currentIndex),
                 new LyricFragment()
         };
 
@@ -470,15 +474,16 @@ public class MusicPlayerFragment extends Fragment {
         this.songList = new ArrayList<>(newSongList);
         this.currentIndex = newIndex;
 
-        // Cập nhật giao diện
+        // Cập nhật giao diện mini player
         Song song = songList.get(currentIndex);
         updateMiniPlayer(song);
 
-        // Cập nhật PlayMusicFragment nếu đang hiển thị
-        if (fragments != null && fragments.length > 0 && fragments[0] instanceof PlayMusicFragment) {
-            PlayMusicFragment playMusicFragment = (PlayMusicFragment) fragments[0];
-            playMusicFragment.updateSongList(songList, currentIndex);
-        }
+        // Gửi danh sách mới đến Service
+        Intent intent = new Intent(requireContext(), MusicService.class);
+        intent.setAction(MusicService.ACTION_PLAY);
+        intent.putExtra("songList", new ArrayList<>(songList));
+        intent.putExtra("position", currentIndex);
+        requireContext().startService(intent);
     }
 
     private void initializeDownloadView(View view) {
@@ -614,6 +619,27 @@ public class MusicPlayerFragment extends Fragment {
         super.onDestroyView();
         if (isDownloading) {
             cancelDownload();
+        }
+    }
+
+    public void showPlayer(List<Song> songList, int currentIndex, String albumName) {
+        this.albumName = albumName;
+        this.songList = new ArrayList<>(songList);
+        this.currentIndex = currentIndex;
+        
+        // Gửi danh sách phát mới đến Service
+        Intent intent = new Intent(requireContext(), MusicService.class);
+        intent.setAction(MusicService.ACTION_PLAY);
+        intent.putExtra("songList", new ArrayList<>(songList));
+        intent.putExtra("position", currentIndex);
+        requireContext().startService(intent);
+
+        // Cập nhật giao diện mini player
+        updateMiniPlayer(songList.get(currentIndex));
+        
+        // Cập nhật tên album
+        if (tvAlbumName != null) {
+            tvAlbumName.setText(albumName);
         }
     }
 } 
