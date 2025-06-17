@@ -67,7 +67,8 @@ dependencies {
 
     implementation 'androidx.palette:palette:1.0.0'
 
+    implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.1.0'
 
-
+//    implementation 'jp.wasabeef:glide-transformations:4.3.0'
 
 }

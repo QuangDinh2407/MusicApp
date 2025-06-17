@@ -36,6 +36,10 @@ public class LibraryFragment extends Fragment {
     private ImageButton btnSearch, btnAdd, btnSort;
     private ShapeableImageView ivUserAvatar;
     private FirebaseAuth mAuth;
+    private LibraryPagerAdapter pagerAdapter;
+    private static PlaylistContentFragment playlistFragment;
+    private static ArtistContentFragment artistFragment;
+    private static AlbumContentFragment albumFragment;
 
     public LibraryFragment() {
         // Required empty public constructor
@@ -49,6 +53,10 @@ public class LibraryFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         mAuth = FirebaseAuth.getInstance();
+        // Khởi tạo các fragment
+        playlistFragment = PlaylistContentFragment.newInstance();
+        artistFragment = ArtistContentFragment.newInstance();
+        albumFragment = AlbumContentFragment.newInstance();
     }
 
     @Override
@@ -77,15 +85,39 @@ public class LibraryFragment extends Fragment {
     }
 
     private void setupViewPager() {
-        LibraryPagerAdapter pagerAdapter = new LibraryPagerAdapter(this);
+        pagerAdapter = new LibraryPagerAdapter(this);
         viewPager.setAdapter(pagerAdapter);
+        viewPager.setOffscreenPageLimit(2); // Giữ các fragment trong bộ nhớ
         viewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override
             public void onPageSelected(int position) {
                 updateChipSelection(position);
                 updateAddButtonVisibility(position);
+                updateCurrentFragment(position);
             }
         });
+    }
+
+    private void updateCurrentFragment(int position) {
+        Fragment currentFragment = null;
+        switch (position) {
+            case 0:
+                currentFragment = playlistFragment;
+                break;
+            case 1:
+                currentFragment = artistFragment;
+                break;
+            case 2:
+                currentFragment = albumFragment;
+                break;
+        }
+
+        if (currentFragment != null) {
+            // Cập nhật UI hoặc dữ liệu của fragment hiện tại nếu cần
+            if (currentFragment instanceof PlaylistContentFragment) {
+                ((PlaylistContentFragment) currentFragment).refreshPlaylists();
+            }
+        }
     }
 
     private void setupChips() {
@@ -131,13 +163,8 @@ public class LibraryFragment extends Fragment {
             }
 
             int currentPosition = viewPager.getCurrentItem();
-            Fragment currentFragment = getChildFragmentManager()
-                    .findFragmentByTag("f" + currentPosition);
-
             if (currentPosition == 0) {
-                if (currentFragment instanceof PlaylistContentFragment) {
-                    ((PlaylistContentFragment) currentFragment).showAddPlaylistDialog();
-                }
+                playlistFragment.showAddPlaylistDialog();
             } else if (currentPosition == 2) {
                 Toast.makeText(getContext(), "Chức năng thêm Album sẽ được triển khai sau", Toast.LENGTH_SHORT).show();
             }
@@ -231,13 +258,13 @@ public class LibraryFragment extends Fragment {
         public Fragment createFragment(int position) {
             switch (position) {
                 case 0:
-                    return PlaylistContentFragment.newInstance();
+                    return playlistFragment;
                 case 1:
-                    return ArtistContentFragment.newInstance();
+                    return artistFragment;
                 case 2:
-                    return AlbumContentFragment.newInstance();
+                    return albumFragment;
                 default:
-                    return PlaylistContentFragment.newInstance();
+                    return playlistFragment;
             }
         }
 
@@ -245,5 +272,11 @@ public class LibraryFragment extends Fragment {
         public int getItemCount() {
             return 3; // Number of tabs (Playlist, Nghệ sĩ, Album)
         }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        updateCurrentFragment(viewPager.getCurrentItem());
     }
 }

@@ -56,9 +56,6 @@ public class PlaylistSongAdapter extends RecyclerView.Adapter<PlaylistSongAdapte
 
         // Click listeners
         holder.itemView.setOnClickListener(v -> listener.onSongClick(song));
-        
-        holder.btnRemove.setOnClickListener(v -> listener.onRemoveClick(song, position));
-        
         holder.btnMore.setOnClickListener(v -> listener.onMoreClick(song, v));
     }
 
@@ -81,14 +78,12 @@ public class PlaylistSongAdapter extends RecyclerView.Adapter<PlaylistSongAdapte
     static class SongViewHolder extends RecyclerView.ViewHolder {
         ImageView imgCover;
         TextView tvTitle;
-        ImageButton btnRemove;
         ImageButton btnMore;
 
         public SongViewHolder(@NonNull View itemView) {
             super(itemView);
             imgCover = itemView.findViewById(R.id.imgCover);
             tvTitle = itemView.findViewById(R.id.tvTitle);
-            btnRemove = itemView.findViewById(R.id.btnRemove);
             btnMore = itemView.findViewById(R.id.btnMore);
         }
     }

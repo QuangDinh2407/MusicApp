@@ -2,12 +2,9 @@ package com.ck.music_app.Adapter;
 
 import android.content.Context;
 import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
-import android.widget.PopupMenu;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -19,22 +16,21 @@ import com.ck.music_app.R;
 
 import java.util.List;
 
-public class PlaylistAdapter extends RecyclerView.Adapter<PlaylistAdapter.PlaylistViewHolder> {
+public class PlaylistRecyclerAdapter extends RecyclerView.Adapter<PlaylistRecyclerAdapter.PlaylistViewHolder> {
     private Context context;
     private List<Playlist> playlists;
-    private OnPlaylistListener listener;
+    private OnPlaylistListener onPlaylistListener;
+    private String selectedPlaylistId = null;
 
     public interface OnPlaylistListener {
         void onPlaylistClick(Playlist playlist);
-        void onEditClick(Playlist playlist);
-        void onDeleteClick(Playlist playlist);
         void onPlaylistLongClick(Playlist playlist, View view, int position);
     }
 
-    public PlaylistAdapter(Context context, List<Playlist> playlists, OnPlaylistListener listener) {
+    public PlaylistRecyclerAdapter(Context context, List<Playlist> playlists, OnPlaylistListener listener) {
         this.context = context;
         this.playlists = playlists;
-        this.listener = listener;
+        this.onPlaylistListener = listener;
     }
 
     @NonNull
@@ -47,13 +43,9 @@ public class PlaylistAdapter extends RecyclerView.Adapter<PlaylistAdapter.Playli
     @Override
     public void onBindViewHolder(@NonNull PlaylistViewHolder holder, int position) {
         Playlist playlist = playlists.get(position);
-        
-        // Set playlist name
+
         holder.tvPlaylistName.setText(playlist.getName());
-        
-        // Set song count
-        int songCount = (playlist.getSongIds() != null) ? playlist.getSongIds().size() : 0;
-        holder.tvSongCount.setText(songCount + " bài hát");
+        holder.tvSongCount.setText(playlist.getSongIds().size() + " bài hát");
 
         // Load playlist cover image
         Glide.with(context)
@@ -61,48 +53,28 @@ public class PlaylistAdapter extends RecyclerView.Adapter<PlaylistAdapter.Playli
             .placeholder(R.drawable.love)
             .error(R.drawable.love)
             .into(holder.imgPlaylist);
-        
-        // Click listener for the whole item
+
+        // Highlight selected playlist
+        if (selectedPlaylistId != null && selectedPlaylistId.equals(playlist.getId())) {
+            holder.itemView.setBackgroundResource(R.color.selected_playlist_background);
+        } else {
+            holder.itemView.setBackgroundResource(android.R.color.transparent);
+        }
+
+        // Set click listeners
         holder.itemView.setOnClickListener(v -> {
-            if (listener != null) {
-                listener.onPlaylistClick(playlist);
+            if (onPlaylistListener != null) {
+                onPlaylistListener.onPlaylistClick(playlist);
             }
         });
 
-        // Long click listener for context menu
         holder.itemView.setOnLongClickListener(v -> {
-            if (listener != null) {
-                listener.onPlaylistLongClick(playlist, v, position);
+            if (onPlaylistListener != null) {
+                onPlaylistListener.onPlaylistLongClick(playlist, v, position);
                 return true;
             }
             return false;
         });
-
-        // Click listener for more options button
-        holder.btnMore.setOnClickListener(v -> showPopupMenu(v, playlist));
-    }
-
-    private void showPopupMenu(View view, Playlist playlist) {
-        PopupMenu popup = new PopupMenu(context, view);
-        popup.getMenuInflater().inflate(R.menu.playlist_options_menu, popup.getMenu());
-
-        popup.setOnMenuItemClickListener(item -> {
-            int itemId = item.getItemId();
-            if (itemId == R.id.menu_edit) {
-                if (listener != null) {
-                    listener.onEditClick(playlist);
-                }
-                return true;
-            } else if (itemId == R.id.menu_delete) {
-                if (listener != null) {
-                    listener.onDeleteClick(playlist);
-                }
-                return true;
-            }
-            return false;
-        });
-
-        popup.show();
     }
 
     @Override
@@ -110,23 +82,30 @@ public class PlaylistAdapter extends RecyclerView.Adapter<PlaylistAdapter.Playli
         return playlists.size();
     }
 
-    public void setPlaylists(List<Playlist> playlists) {
-        this.playlists = playlists;
+    public void setPlaylists(List<Playlist> newPlaylists) {
+        this.playlists = newPlaylists;
         notifyDataSetChanged();
+    }
+
+    public void setSelectedPlaylist(String playlistId) {
+        this.selectedPlaylistId = playlistId;
+        notifyDataSetChanged();
+    }
+
+    public String getSelectedPlaylistId() {
+        return selectedPlaylistId;
     }
 
     static class PlaylistViewHolder extends RecyclerView.ViewHolder {
         ImageView imgPlaylist;
         TextView tvPlaylistName;
         TextView tvSongCount;
-        ImageView btnMore;
 
-        public PlaylistViewHolder(@NonNull View itemView) {
+        PlaylistViewHolder(@NonNull View itemView) {
             super(itemView);
             imgPlaylist = itemView.findViewById(R.id.imgPlaylist);
             tvPlaylistName = itemView.findViewById(R.id.tvPlaylistName);
             tvSongCount = itemView.findViewById(R.id.tvSongCount);
-            btnMore = itemView.findViewById(R.id.btnMore);
         }
     }
-}
+} 

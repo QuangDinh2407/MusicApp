@@ -1,23 +1,29 @@
 package com.ck.music_app.Model;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 
 public class Playlist implements Serializable {
     private String id;
     private String name;
     private String coverUrl;
-    private List<String> songIds;
     private String createdAt;
+    private String lastAccessedAt;
+    private List<String> songIds;
 
-    public Playlist() {}
+    public Playlist() {
+        // Empty constructor needed for Firestore
+        songIds = new ArrayList<>();
+    }
 
     public Playlist(String id, String name, List<String> songIds, String coverUrl, String createdAt) {
         this.id = id;
         this.name = name;
-        this.songIds = songIds;
+        this.songIds = songIds != null ? songIds : new ArrayList<>();
         this.coverUrl = coverUrl;
         this.createdAt = createdAt;
+        this.lastAccessedAt = createdAt;
     }
 
     public String getId() {
@@ -36,6 +42,17 @@ public class Playlist implements Serializable {
         this.name = name;
     }
 
+    public List<String> getSongIds() {
+        if (songIds == null) {
+            songIds = new ArrayList<>();
+        }
+        return songIds;
+    }
+
+    public void setSongIds(List<String> songIds) {
+        this.songIds = songIds != null ? songIds : new ArrayList<>();
+    }
+
     public String getCoverUrl() {
         return coverUrl;
     }
@@ -44,19 +61,19 @@ public class Playlist implements Serializable {
         this.coverUrl = coverUrl;
     }
 
-    public List<String> getSongIds() {
-        return songIds;
-    }
-
-    public void setSongIds(List<String> songIds) {
-        this.songIds = songIds;
-    }
-
     public String getCreatedAt() {
         return createdAt;
     }
 
     public void setCreatedAt(String createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getLastAccessedAt() {
+        return lastAccessedAt;
+    }
+
+    public void setLastAccessedAt(String lastAccessedAt) {
+        this.lastAccessedAt = lastAccessedAt;
     }
 }

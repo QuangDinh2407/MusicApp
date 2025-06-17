@@ -1,30 +1,98 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name= "SurfaceColor">#FFCC00</color>
+    <!-- Primary Theme Colors -->
+    <color name="colorPrimary">#1DB954</color>
+    <color name="colorPrimaryDark">#168D40</color>
+    <color name="colorAccent">#FF6B6B</color>
+
+    <!-- Surface and Background Colors -->
+    <color name="SurfaceColor">#121212</color>
+    <color name="background">#000000</color>
+    <color name="background_panel_color">#121212</color>
+    <color name="library_back_color">#FB181818</color>
+    <color name="library_back_color_dd">#DD181818</color>
+    <color name="library_back_color_88">#88181818</color>
+
+    <!-- Flat Colors - Modern Palette -->
+    <color name="flatRed">#FF6B6B</color>
+    <color name="FlatGreen">#1DB954</color>
+    <color name="flatOrange">#FF9F43</color>
+    <color name="FlatYellow">#FFC93C</color>
+    <color name="FlatTealBlue">#00D2D3</color>
+    <color name="flatPurple">#6C5CE7</color>
+    <color name="FlatPink">#FF78B9</color>
+    <color name="flatBlue">#45AAF2</color>
+
+    <!-- Text Colors -->
+    <color name="textPrimary">#FFFFFF</color>
+    <color name="textPrimarySameBackground">#FFFFFF</color>
+    <color name="textSecondary">#B3B3B3</color>
+
+    <!-- Overlay Colors -->
     <color name="BackwardColorHeavy">#B0000000</color>
     <color name="backward_color">#DD000000</color>
-    <color name="colorPrimary">#3F51B5</color>
-    <color name="colorPrimaryDark">#303F9F</color>
-    <color name="colorAccent">@color/flatOrange</color>
-    <color name = "Gray">#22000000</color>
+    <color name="Gray">#22000000</color>
     <color name="NearlyWhite">#44ffffff</color>
-    <color name="flatRed">#FF3B30</color>
-    <color name="FlatGreen">#4CD964</color>
-    <color name="flatOrange">#FF9500</color>
-    <color name="FlatYellow">#FFCC00</color>
-    <color name="FlatTealBlue">#5AC8FA</color>
-    <color name="flatPurple">#5856D6</color>
-    <color name="FlatPink">#FF2D55</color>
-    <color name="flatBlue">#007AFF</color>
 
-    <color name="HeavyOrange">#AF8700</color>
-    <color name="HeavyRed">#770000</color>
-    <color name="HeavyTealBlue">#0058AA</color>
-    <color name="HeavyYellow">#802D00</color>
-    <color name="HeavyGreen">#005800</color>
-    <color name="HeavyBlue">#00218B</color>
-    <color name="HeavyPurple">#162EA6</color>
-    <color name="HeavyPink">#B60024</color>
+    <!-- Heavy Colors -->
+    <color name="HeavyOrange">#CC7A35</color>
+    <color name="HeavyRed">#CC5555</color>
+    <color name="HeavyTealBlue">#00A8A8</color>
+    <color name="HeavyYellow">#CCA130</color>
+    <color name="HeavyGreen">#168D40</color>
+    <color name="HeavyBlue">#3689C2</color>
+    <color name="HeavyPurple">#574BC7</color>
+    <color name="HeavyPink">#CC6293</color>
+
+    <!-- Gradient Colors -->
+    <color name="blueStart">#45AAF2</color>
+    <color name="blueEnd">#2D98DA</color>
+    <color name="purpleStart">#6C5CE7</color>
+    <color name="purpleEnd">#574BC7</color>
+    <color name="roseStart">#FF6B6B</color>
+    <color name="roseEnd">#EE5253</color>
+    <color name="greenStart">#1DB954</color>
+    <color name="greenEnd">#168D40</color>
+
+    <!-- Status Bar Colors -->
+    <color name="statusBarColorLight">#121212</color>
+    <color name="statusBarColorDark">#000000</color>
+
+    <!-- Common Colors -->
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="gray">#FF808080</color>
+    <color name="light_gray">#FFD3D3D3</color>
+    <color name="dark_gray">#FF404040</color>
+    <color name="transparent">#00000000</color>
+
+    <!-- Player Colors -->
+    <color name="waveform_selected">#1DB954</color>
+    <color name="waveform_unselected">#4D4D4D</color>
+    <color name="playback_indicator">#FF6B6B</color>
+    <color name="FloatingButtonColor">#1DB954</color>
+
+    <color name="item" type="color">#FFCC00</color>
+<!--    <color name="colorAccent">@color/flatOrange</color>-->
+<!--    <color name = "Gray">#22000000</color>-->
+<!--    <color name="NearlyWhite">#44ffffff</color>-->
+<!--    <color name="flatRed">#FF3B30</color>-->
+<!--    <color name="FlatGreen">#4CD964</color>-->
+<!--    <color name="flatOrange">#FF9500</color>-->
+<!--    <color name="FlatYellow">#FFCC00</color>-->
+<!--    <color name="FlatTealBlue">#5AC8FA</color>-->
+<!--    <color name="flatPurple">#5856D6</color>-->
+<!--    <color name="FlatPink">#FF2D55</color>-->
+<!--    <color name="flatBlue">#007AFF</color>-->
+
+<!--    <color name="HeavyOrange">#AF8700</color>-->
+<!--    <color name="HeavyRed">#770000</color>-->
+<!--    <color name="HeavyTealBlue">#0058AA</color>-->
+<!--    <color name="HeavyYellow">#802D00</color>-->
+<!--    <color name="HeavyGreen">#005800</color>-->
+<!--    <color name="HeavyBlue">#00218B</color>-->
+<!--    <color name="HeavyPurple">#162EA6</color>-->
+<!--    <color name="HeavyPink">#B60024</color>-->
 
     <item name="yellow" type="color">#F7B500</item>
     <item name="yellow_dark" type="color">#AC7E00</item>
@@ -34,19 +102,15 @@
         <item>@color/yellow</item>
         <item>@color/yellow_dark</item>
     </integer-array>
-    <color name="waveform_selected">#FB5606</color>
-    <color name="waveform_unselected">#A7B2B9</color>
+<!--    <color name="waveform_selected">#FB5606</color>-->
+<!--    <color name="waveform_unselected">#A7B2B9</color>-->
     <color name="waveform_unselected_bkgnd_overlay">#A1725E</color>
     <color name="selection_border">#ffffff</color>
-    <color name="playback_indicator">#ffff66</color>
+<!--    <color name="playback_indicator">#ffff66</color>-->
     <color name="grid_line">#6D6D6D</color>
     <color name="timecode">#000000</color>
     <color name="timecode_shadow">#aa000000</color>
     <color name="md_bottom_sheet_text_color">@color/FlatWhite</color>
-    <color name="background_panel_color">#080808</color>
-    <color name="library_back_color">#FB181818</color>
-    <color name="library_back_color_dd">#DD181818</color>
-    <color name="library_back_color_88">#88181818</color>
     <color name="shuffle_panel_color">#22FFFFFF</color>
     <color name="color_aaa">#aaa</color>
     <color name="white_flat_blue">#DBF0FF</color>
@@ -69,7 +133,6 @@
     <color name="rsbColorThumbDefault">#FFFFFF</color>
     <color name="rsbColorThumbBorder">#FFD7D7D7</color>
     <color name="colorProgress">#ffffbb33</color>
-    <color name="FloatingButtonColor">#FBFFBD</color>
     <color name="SplashColor">@android:color/black</color>
 
     <color name="Tomato">#ff6347</color>
@@ -79,47 +142,31 @@
     <color name="lightTealBlue">#2bd9d9</color>
     <color name="LightYellow">#ffd426</color>
 
-    <color name="blueStart">#4EFFF3</color>
-    <color name="blueEnd">#0ca6f9</color>
-    <color name="purpleStart">#a369ff</color>
-    <color name="purpleEnd">#0e56ff</color>
-    <color name="roseStart">#FF6A00</color>
-    <color name="roseEnd">#ef0276</color>
-    <color name="greenStart">#a7f56e</color>
-    <color name="greenEnd">#11c612</color>
-    <color name="flatGreenEnd">#00BF84</color>
-
-    <color name="statusBarColorLight">#FFFFFF</color>
-    <color name="statusBarColorDark">#000000</color>
-
-    <color name="background">#FFFFFF</color>
-
-    <color name="background_item">#000000</color>
-
-    <color name="textPrimary">#000000</color>
-
-    <color name="textPrimarySameBackground">#FFFFFF</color>
-
-    <color name="textSecondary">#666666</color>
-
     <color name="purple_200">#FFBB86FC</color>
     <color name="purple_500">#FF6200EE</color>
     <color name="purple_700">#FF3700B3</color>
     <color name="teal_200">#FF03DAC5</color>
     <color name="teal_700">#FF018786</color>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
-    <color name="gray">#FF808080</color>
-    <color name="light_gray">#FFD3D3D3</color>
-    <color name="dark_gray">#FF404040</color>
-    <color name="transparent">#00000000</color>
 
-    <!-- Theme colors -->
-    <color name="surface_dark">#282828</color>
+    <color name="selected_playlist_background">#1A000000</color>
+
+    <color name="surface_dark">#121212</color>
     <color name="surface_light">#FFFFFF</color>
+
+    <!-- Màu chữ chính -->
     <color name="text_primary_dark">#FFFFFF</color>
-    <color name="text_primary_light">#000000</color>
+    <color name="text_primary_light">#212121</color>
+
+    <!-- Màu chữ phụ -->
     <color name="text_secondary_dark">#B3B3B3</color>
-    <color name="text_secondary_light">#6B6B6B</color>
-    <color name="accent_orange">#ff914d</color>
+    <color name="text_secondary_light">#757575</color>
+
+    <!-- Màu accent -->
+    <color name="accent_orange">#FF6D00</color>
+
+    <!-- Material Button Colors -->
+    <color name="button_background">@color/background_item</color>
+    <color name="button_text">@color/textPrimarySameBackground</color>
+    <color name="button_stroke">@color/textPrimary</color>
+    <color name="background_item">#1DB954</color>
 </resources>

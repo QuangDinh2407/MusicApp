@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Nền màu xám nhạt -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#EEEEEE"/>
+        </shape>
+    </item>
+
+    <!-- Icon nốt nhạc ở giữa -->
+    <item android:gravity="center">
+        <bitmap
+            android:src="@drawable/music_note"
+            android:gravity="center"
+            android:tileMode="disabled" />
+    </item>
+</layer-list>

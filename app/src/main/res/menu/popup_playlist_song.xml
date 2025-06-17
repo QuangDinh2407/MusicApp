@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
-        android:id="@+id/action_play"
-        android:title="Phát"/>
+        android:id="@+id/action_remove"
+        android:title="Xóa"/>
     
     <item
-        android:id="@+id/action_add_to_queue"
-        android:title="Thêm vào hàng đợi"/>
+        android:id="@+id/action_change"
+        android:title="Đổi ca khúc"/>
 </menu> 

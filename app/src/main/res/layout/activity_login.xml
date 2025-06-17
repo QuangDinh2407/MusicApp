@@ -132,8 +132,9 @@
                 android:textSize="16sp"
                 app:backgroundTint="@color/background_item"
                 android:textColor="@color/textPrimarySameBackground"
-                app:cornerRadius="8dp"
-                app:elevation="2dp" />
+                app:elevation="2dp"
+                style="@style/Widget.MaterialComponents.Button"
+                app:cornerRadius="8dp" />
 
             <!-- Divider Text -->
             <TextView
@@ -162,8 +163,8 @@
                     android:textColor="@color/textPrimary"
                     app:icon="@drawable/ic_facebook"
                     app:iconTint="@color/textPrimary"
-                    app:iconGravity="textStart"
-                    app:strokeColor="@color/textPrimary" />
+                    app:strokeColor="@color/textPrimary"
+                    app:iconGravity="textStart" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/googleLoginButton"
@@ -173,11 +174,10 @@
                     android:layout_weight="1"
                     android:layout_marginStart="8dp"
                     android:text="Google"
-                    android:textColor="@color/textPrimary"
                     app:icon="@drawable/ic_google"
                     app:iconTint="@color/textPrimary"
-                    app:iconGravity="textStart"
-                    app:strokeColor="@color/textPrimary" />
+                    app:strokeColor="@color/textPrimary"
+                    app:iconGravity="textStart" />
             </LinearLayout>
 
             <!-- Register Link -->
