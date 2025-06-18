@@ -102,14 +102,14 @@ public class FirebaseService {
                 });
     }
 
-    public void loginWithFacebook(String token, OnAuthCallback callback) {
+    public void loginWithFacebook(String token, String facebookName, String facebookEmail, String profilePicUrl, OnAuthCallback callback) {
         AuthCredential credential = FacebookAuthProvider.getCredential(token);
         mAuth.signInWithCredential(credential)
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
                         FirebaseUser user = mAuth.getCurrentUser();
                         if (user != null) {
-                            createUserIfNotExists(user);
+                            createUserIfNotExists(user, facebookName, facebookEmail, profilePicUrl);
                             callback.onSuccess(user);
                         }
                     } else {
@@ -120,7 +120,7 @@ public class FirebaseService {
                                 user.linkWithCredential(credential)
                                         .addOnCompleteListener(linkTask -> {
                                             if (linkTask.isSuccessful()) {
-                                                createUserIfNotExists(user);
+                                                createUserIfNotExists(user, facebookName, facebookEmail, profilePicUrl);
                                                 callback.onSuccess(user);
                                             } else {
                                                 callback.onError("Liên kết Facebook thất bại: " + linkTask.getException().getMessage());
@@ -142,16 +142,14 @@ public class FirebaseService {
 
     // Firestore methods
     private void createUserInFirestore(FirebaseUser user) {
-        if (user == null) return;
-        Map<String, Object> userMap = new HashMap<>();
-        userMap.put("DateOfBirth", "");
-        userMap.put("Email", user.getEmail() != null ? user.getEmail() : "");
-        userMap.put("Name", user.getDisplayName() != null ? user.getDisplayName() : "");
-        userMap.put("songPlaying", "");
-        db.collection(USERS_COLLECTION).document(user.getUid()).set(userMap);
+        createUserIfNotExists(user, null, null, null);
     }
 
     private void createUserIfNotExists(FirebaseUser user) {
+        createUserIfNotExists(user, null, null, null);
+    }
+
+    private void createUserIfNotExists(FirebaseUser user, String fbName, String fbEmail, String fbProfilePicUrl) {
         if (user == null) return;
         db.collection(USERS_COLLECTION)
                 .document(user.getUid())
@@ -160,8 +158,20 @@ public class FirebaseService {
                     if (!documentSnapshot.exists()) {
                         Map<String, Object> userMap = new HashMap<>();
                         userMap.put("DateOfBirth", "");
-                        userMap.put("Email", user.getEmail() != null ? user.getEmail() : "");
-                        userMap.put("Name", user.getDisplayName() != null ? user.getDisplayName() : "");
+                        
+                        // Ưu tiên email từ Facebook nếu có
+                        String email = fbEmail != null ? fbEmail : (user.getEmail() != null ? user.getEmail() : "");
+                        userMap.put("Email", email);
+                        
+                        // Ưu tiên tên từ Facebook nếu có
+                        String name = fbName != null ? fbName : (user.getDisplayName() != null ? user.getDisplayName() : "");
+                        userMap.put("Name", name);
+                        
+                        // Thêm URL ảnh đại diện từ Facebook
+                        if (fbProfilePicUrl != null) {
+                            userMap.put("ProfilePicture", fbProfilePicUrl);
+                        }
+                        
                         userMap.put("songPlaying", "");
                         db.collection(USERS_COLLECTION).document(user.getUid()).set(userMap);
                     }
@@ -277,6 +287,79 @@ public class FirebaseService {
                         callback.onError(task.getException());
                     }
                 });
+    }
+
+    // User song methods
+    public void getUserCurrentSong(String userId, FirestoreCallback<Song> callback) {
+        Log.d(TAG, "Bắt đầu lấy bài hát đang phát của user: " + userId);
+        db.collection(USERS_COLLECTION)
+                .document(userId)
+                .get()
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful() && task.getResult() != null) {
+                        String songId = task.getResult().getString("songPlaying");
+                        if (songId != null && !songId.isEmpty()) {
+                            // Nếu có songId, lấy thông tin bài hát
+                            db.collection(SONGS_COLLECTION)
+                                    .document(songId)
+                                    .get()
+                                    .addOnCompleteListener(songTask -> {
+                                        if (songTask.isSuccessful() && songTask.getResult() != null && songTask.getResult().exists()) {
+                                            Song song = songTask.getResult().toObject(Song.class);
+                                            song.setSongId(songTask.getResult().getId());
+                                            callback.onSuccess(song);
+                                        } else {
+                                            callback.onError(new Exception("Không tìm thấy bài hát"));
+                                        }
+                                    });
+                        } else {
+                            callback.onError(new Exception("Không có bài hát đang phát"));
+                        }
+                    } else {
+                        Log.e(TAG, "Lỗi khi lấy thông tin user", task.getException());
+                        callback.onError(task.getException());
+                    }
+                });
+    }
+
+    public void updateUserCurrentSong(String userId, String songId, FirestoreCallback<Void> callback) {
+        Log.d(TAG, "Cập nhật bài hát đang phát của user: " + userId);
+        db.collection(USERS_COLLECTION)
+                .document(userId)
+                .update("songPlaying", songId)
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        callback.onSuccess(null);
+                    } else {
+                        Log.e(TAG, "Lỗi khi cập nhật bài hát đang phát", task.getException());
+                        callback.onError(task.getException());
+                    }
+                });
+    }
+
+    public void updateCurrentPlayingSong(Song song) {
+        // Kiểm tra xem có user đang đăng nhập không và bài hát không phải local
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser != null && song != null && song.getSongId() != null 
+            && !song.getSongId().isEmpty() 
+            && !song.getAudioUrl().startsWith("content://")) {
+            
+            updateUserCurrentSong(
+                currentUser.getUid(), 
+                song.getSongId(),
+                new FirestoreCallback<Void>() {
+                    @Override
+                    public void onSuccess(Void result) {
+                        Log.d(TAG, "Đã cập nhật songPlaying thành công");
+                    }
+
+                    @Override
+                    public void onError(Exception e) {
+                        Log.e(TAG, "Lỗi khi cập nhật songPlaying: " + e.getMessage());
+                    }
+                }
+            );
+        }
     }
 
     // Callback interfaces

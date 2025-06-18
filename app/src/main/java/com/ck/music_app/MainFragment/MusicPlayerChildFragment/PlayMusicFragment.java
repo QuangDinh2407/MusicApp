@@ -330,17 +330,22 @@ public class PlayMusicFragment extends Fragment {
         tvTitle.setText(song.getTitle());
         
         // Get artist name from Firebase
-        firebaseService.getArtistNameById(song.getArtistId(), new FirebaseService.FirestoreCallback<String>() {
-            @Override
-            public void onSuccess(String artistName) {
-                tvArtist.setText(artistName);
-            }
+        String artistId = song.getArtistId();
+        if (artistId != null && !artistId.isEmpty()) {
+            firebaseService.getArtistNameById(artistId, new FirebaseService.FirestoreCallback<String>() {
+                @Override
+                public void onSuccess(String artistName) {
+                    tvArtist.setText(artistName);
+                }
 
-            @Override
-            public void onError(Exception e) {
-                tvArtist.setText("Unknown Artist");
-            }
-        });
+                @Override
+                public void onError(Exception e) {
+                    tvArtist.setText("Unknown Artist");
+                }
+            });
+        } else {
+            tvArtist.setText("Unknown Artist");
+        }
 
         Glide.with(this)
                 .load(song.getCoverUrl())

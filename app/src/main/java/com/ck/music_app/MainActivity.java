@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
@@ -34,6 +35,7 @@ import java.util.List;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.ck.music_app.Services.InternetService;
+import com.ck.music_app.utils.LoginUtils;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
@@ -87,6 +89,11 @@ public class MainActivity extends AppCompatActivity {
         auth = FirebaseAuth.getInstance();
         sharedPreferences = getSharedPreferences(PREF_NAME, MODE_PRIVATE);
         
+        // Khởi tạo views
+        viewPager = findViewById(R.id.view_pager);
+        bottomNavigationView = findViewById(R.id.bottom_navigation);
+        playerContainer = findViewById(R.id.player_container);
+        
         // Kiểm tra xem có đang ở chế độ offline không
         isOfflineMode = getIntent().getBooleanExtra("openDownloadFragment", false);
 
@@ -98,9 +105,9 @@ public class MainActivity extends AppCompatActivity {
                 new ProfileFragment()
         };
 
-        viewPager = findViewById(R.id.view_pager);
         MainPagerAdapter adapter = new MainPagerAdapter(this, fragments);
         viewPager.setAdapter(adapter);
+
         
         // Đảm bảo adapter được set trước khi chuyển trang
         viewPager.post(() -> {
@@ -115,9 +122,6 @@ public class MainActivity extends AppCompatActivity {
                 viewPager.setCurrentItem(0, false);
             }
         });
-
-        bottomNavigationView = findViewById(R.id.bottom_navigation);
-        playerContainer = findViewById(R.id.player_container);
 
         // Khi vuốt ViewPager2 thì đổi tab menu
         viewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
@@ -182,6 +186,8 @@ public class MainActivity extends AppCompatActivity {
             ArrayList<Song> songList = (ArrayList<Song>) intent.getSerializableExtra("songList");
             int position = intent.getIntExtra("position", 0);
             String albumName = intent.getStringExtra("albumName");
+            boolean resumePlayback = intent.getBooleanExtra("resume_playback", false);
+            int playbackPosition = intent.getIntExtra("playback_position", 0);
             
             // Phát nhạc
             Intent serviceIntent = new Intent(this, MusicService.class);
@@ -191,43 +197,66 @@ public class MainActivity extends AppCompatActivity {
             startService(serviceIntent);
 
             // Hiển thị player
-            showPlayer(songList, position, albumName);
+            showPlayer(songList, position, albumName, !resumePlayback);
+            
+            if (playbackPosition > 0) {
+                // Seek đến vị trí đang phát
+                new Handler().postDelayed(() -> {
+                    Intent seekIntent = new Intent(this, MusicService.class);
+                    seekIntent.setAction(MusicService.ACTION_SEEK);
+                    seekIntent.putExtra("position", playbackPosition);
+                    startService(seekIntent);
+                }, 500);
+            }
             
             // Xóa flag để tránh hiển thị lại player khi activity resume
             intent.removeExtra("showPlayer");
         }
     }
 
-    public void showPlayer(List<Song> songList, int position, String albumName) {
+    public void showPlayer(List<Song> songList, int position, String albumName, boolean shouldMinimize) {
         // Lưu trạng thái hiện tại
         currentPlaylist = new ArrayList<>(songList);
         currentSongIndex = position;
         currentSong = songList.get(position);
 
-        // Gửi intent đến Service để phát nhạc
-        Intent intent = new Intent(this, MusicService.class);
-        intent.setAction(MusicService.ACTION_PLAY);
-        intent.putExtra("songList", new ArrayList<>(songList));
-        intent.putExtra("position", position);
-        startService(intent);
-
         // Hiển thị player fragment
         if (musicplayerFragment == null) {
-            musicplayerFragment = MusicPlayerFragment.newInstance(currentPlaylist, currentSongIndex, albumName);
+            musicplayerFragment = MusicPlayerFragment.newInstance(currentPlaylist, currentSongIndex, albumName, shouldMinimize);
             getSupportFragmentManager().beginTransaction()
                     .replace(R.id.player_container, musicplayerFragment)
                     .commit();
             playerContainer.setVisibility(View.VISIBLE);
+
+            // Gửi intent đến Service để phát nhạc
+            Intent intent = new Intent(this, MusicService.class);
+            intent.setAction(MusicService.ACTION_PLAY);
+            intent.putExtra("songList", new ArrayList<>(songList));
+            intent.putExtra("position", position);
+            startService(intent);
+
+            if (shouldMinimize) {
+                // Đợi lâu hơn để đảm bảo MediaPlayer đã được khởi tạo và bắt đầu phát
+                new Handler().postDelayed(() -> {
+                    Intent pauseIntent = new Intent(this, MusicService.class);
+                    pauseIntent.setAction(MusicService.ACTION_PAUSE);
+                    startService(pauseIntent);
+                }, 2000); // Tăng delay lên 2 giây
+            }
         } else {
             musicplayerFragment.updateAlbumName(albumName);
             musicplayerFragment.updatePlayerInfo(songList, position);
-            musicplayerFragment.maximize();
+            if (shouldMinimize) {
+                musicplayerFragment.minimize();
+            } else {
+                musicplayerFragment.maximize();
+            }
         }
     }
 
-    // Overload cho các trường hợp không có albumName
-    public void showPlayer(List<Song> songList, int position) {
-        showPlayer(songList, position, "Now Playing");
+    // Overload cho các trường hợp không cần minimize
+    public void showPlayer(List<Song> songList, int position, String albumName) {
+        showPlayer(songList, position, albumName, false);
     }
 
     public List<Song> getCurrentPlaylist() {
@@ -265,12 +294,9 @@ public class MainActivity extends AppCompatActivity {
                 auth.signInWithEmailAndPassword(savedEmail, savedPassword)
                     .addOnCompleteListener(this, task -> {
                         if (task.isSuccessful()) {
-                            // Đăng nhập thành công, cập nhật UI
+                            // Đăng nhập thành công, sử dụng LoginUtils để xử lý
                             isOfflineMode = false;
-                            // Có thể thêm logic cập nhật UI ở đây
-                            Toast.makeText(this,
-                                    "Đăng nhập thành công.",
-                                    Toast.LENGTH_LONG).show();
+                            LoginUtils.handleLoginSuccess(this, auth.getCurrentUser(), savedEmail);
                         } else {
                             // Đăng nhập thất bại, chuyển về màn login
                             SharedPreferences.Editor editor = sharedPreferences.edit();

@@ -124,12 +124,15 @@ public class MusicPlayerFragment extends Fragment {
         }
     };
 
-    public static MusicPlayerFragment newInstance(List<Song> songs, int currentIndex, String albumName) {
+    private boolean shouldMinimizeOnCreate = false;
+
+    public static MusicPlayerFragment newInstance(List<Song> songs, int currentIndex, String albumName, boolean shouldMinimize) {
         MusicPlayerFragment fragment = new MusicPlayerFragment();
         Bundle args = new Bundle();
         args.putSerializable("songList", new ArrayList<>(songs));
         args.putInt("currentIndex", currentIndex);
         args.putString("albumName", albumName);
+        args.putBoolean("shouldMinimize", shouldMinimize);
         fragment.setArguments(args);
         return fragment;
     }
@@ -141,6 +144,7 @@ public class MusicPlayerFragment extends Fragment {
             songList = (List<Song>) getArguments().getSerializable("songList");
             currentIndex = getArguments().getInt("currentIndex", 0);
             albumName = getArguments().getString("albumName", "Unknown Album");
+            shouldMinimizeOnCreate = getArguments().getBoolean("shouldMinimize", false);
         }
         broadcaster = LocalBroadcastManager.getInstance(requireContext());
         loadingDialog = new LoadingDialog(requireContext());
@@ -190,6 +194,11 @@ public class MusicPlayerFragment extends Fragment {
 
         // Khởi tạo view download
         initializeDownloadView(view);
+        
+        // Nếu cần minimize khi tạo
+        if (shouldMinimizeOnCreate) {
+            view.post(() -> minimize());
+        }
         
         return view;
     }
@@ -377,17 +386,22 @@ public class MusicPlayerFragment extends Fragment {
     private void updateMiniPlayer(Song song) {
         tvMiniTitle.setText(song.getTitle());
         // Get artist name from Firebase
-        firebaseService.getArtistNameById(song.getArtistId(), new FirebaseService.FirestoreCallback<>() {
-            @Override
-            public void onSuccess(String artistName) {
-                tvMiniArtist.setText(artistName);
-            }
+        String artistId = song.getArtistId();
+        if (artistId != null && !artistId.isEmpty()) {
+            firebaseService.getArtistNameById(artistId, new FirebaseService.FirestoreCallback<>() {
+                @Override
+                public void onSuccess(String artistName) {
+                    tvMiniArtist.setText(artistName);
+                }
 
-            @Override
-            public void onError(Exception e) {
-                tvMiniArtist.setText("Unknown Artist");
-            }
-        });
+                @Override
+                public void onError(Exception e) {
+                    tvMiniArtist.setText("Unknown Artist");
+                }
+            });
+        } else {
+            tvMiniArtist.setText("Unknown Artist");
+        }
 
         Glide.with(this)
                 .load(song.getCoverUrl())

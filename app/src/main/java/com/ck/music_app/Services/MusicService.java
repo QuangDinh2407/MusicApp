@@ -16,6 +16,8 @@ import androidx.annotation.Nullable;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.ck.music_app.Model.Song;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -43,7 +45,7 @@ public class MusicService extends Service {
 
     private MediaPlayer mediaPlayer;
     private static List<Song> songList = new ArrayList<>();
-    private int currentIndex = 0;
+    private static int currentIndex = 0;
     private boolean isPlaying = false;
     private LocalBroadcastManager broadcaster;
     private Handler lyricHandler;
@@ -54,9 +56,12 @@ public class MusicService extends Service {
     private int repeatMode = 0; // 0: no repeat, 1: repeat all, 2: repeat one
     private List<Song> originalSongList = new ArrayList<>(); // Lưu danh sách gốc
 
+    private static MusicService instance;
+
     @Override
     public void onCreate() {
         super.onCreate();
+        instance = this;
         broadcaster = LocalBroadcastManager.getInstance(this);
         initializeMediaPlayer();
         lyricHandler = new Handler(Looper.getMainLooper());
@@ -157,6 +162,9 @@ public class MusicService extends Service {
             broadcastLoadingState(true);
             broadcastSongChanged(currentIndex);
 
+            // Cập nhật songPlaying lên Firebase (chỉ với bài hát online)
+            FirebaseService.getInstance().updateCurrentPlayingSong(song);
+
             try {
                 // Kiểm tra xem URL có phải là local URI không
                 if (song.getAudioUrl().startsWith("content://")) {
@@ -198,21 +206,39 @@ public class MusicService extends Service {
     }
 
     private void resumeMusic() {
-        if (mediaPlayer != null && !mediaPlayer.isPlaying()) {
-            mediaPlayer.start();
-            isPlaying = true;
-            startProgressUpdates();
-            startLyricUpdates();
-            broadcastPlayingState(true);
+        if (mediaPlayer != null) {
+            try {
+                mediaPlayer.start();
+                isPlaying = true;
+                startProgressUpdates();
+                startLyricUpdates();
+                broadcastPlayingState(true);
+                System.out.println("Music resumed successfully");
+            } catch (IllegalStateException e) {
+                e.printStackTrace();
+                // Thử phát lại từ đầu nếu không thể resume
+                if (!songList.isEmpty()) {
+                    playSong(currentIndex);
+                }
+            }
+        } else {
+            // Thử khởi tạo lại MediaPlayer nếu nó là null
+            if (!songList.isEmpty()) {
+                playSong(currentIndex);
+            }
         }
     }
 
     private void pauseMusic() {
-        if (mediaPlayer != null && mediaPlayer.isPlaying()) {
-            mediaPlayer.pause();
-            isPlaying = false;
-            stopLyricUpdates();
-            broadcastPlayingState(false);
+        if (mediaPlayer != null) {
+            try {
+                mediaPlayer.pause();
+                isPlaying = false;
+                stopLyricUpdates();
+                broadcastPlayingState(false);
+            } catch (IllegalStateException e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -419,19 +445,12 @@ public class MusicService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
+        instance = null;
         if (mediaPlayer != null) {
-            stopLyricUpdates();
-            try {
-                if (mediaPlayer.isPlaying()) {
-                    mediaPlayer.stop();
-                }
-                mediaPlayer.release();
-            } catch (Exception e) {
-                Log.e(TAG, "Error releasing MediaPlayer: " + e.getMessage());
-            }
+            mediaPlayer.release();
             mediaPlayer = null;
         }
-        isPlaying = false;
+        stopLyricUpdates();
     }
 
     public static Song getCurrentSong() {
@@ -442,11 +461,22 @@ public class MusicService extends Service {
         return songList;
     }
 
-    public  int getCurrentIndex() {
+    public static int getCurrentIndex() {
         return currentIndex;
     }
 
     public  boolean isShuffleEnabled() {
         return isShuffleOn;
+    }
+
+    public static boolean isPlaying() {
+        return instance != null && instance.mediaPlayer != null && instance.mediaPlayer.isPlaying();
+    }
+
+    public static int getCurrentPosition() {
+        if (instance != null && instance.mediaPlayer != null) {
+            return instance.mediaPlayer.getCurrentPosition();
+        }
+        return 0;
     }
 } 
