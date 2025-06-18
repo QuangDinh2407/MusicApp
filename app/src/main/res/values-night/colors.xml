@@ -1,10 +1,70 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Status Bar -->
     <color name="statusBarColorLight">#FFFFFF</color>
     <color name="statusBarColorDark">#000000</color>
+    
+    <!-- Backgrounds -->
     <color name="background">#161515</color>
     <color name="background_item">#FFFFFF</color>
+    
+    <!-- Text Colors -->
     <color name="textPrimary">#FFFFFF</color>
     <color name="textPrimarySameBackground">#000000</color>
     <color name="textSecondary">#CCCCCC</color>
+    
+    <!-- Surface Colors for Dark Mode -->
+    <color name="surface_dark">#1E1E1E</color>
+    <color name="surface_light">#2D2D2D</color>
+    
+    <!-- Card and Item Colors -->
+    <color name="card_background_dark">#2A2A2A</color>
+    <color name="card_background_light">#2A2A2A</color>
+    <color name="item_background_dark">#333333</color>
+    
+    <!-- Text Colors for Dark Mode -->
+    <color name="text_primary_dark">#FFFFFF</color>
+    <color name="text_primary_light">#FFFFFF</color>
+    <color name="text_secondary_dark">#B3B3B3</color>
+    <color name="text_secondary_light">#B3B3B3</color>
+    <color name="text_hint_dark">#808080</color>
+    
+    <!-- Accent and Interactive Colors -->
+    <color name="accent_orange">#FF9D42</color>
+    <color name="flatOrange">#FF9500</color>
+    
+    <!-- Button and Icon Colors -->
+    <color name="icon_tint_dark">#E0E0E0</color>
+    <color name="icon_tint_light">#E0E0E0</color>
+    <color name="icon_tint_primary_light">#FF9500</color>
+    <color name="ripple_dark">#40FFFFFF</color>
+    
+    <!-- Chip Colors -->
+    <color name="chip_background_dark">#404040</color>
+    <color name="chip_background_light">#404040</color>
+    <color name="chip_background_selected_light">#FF9500</color>
+    <color name="chip_text_dark">#FFFFFF</color>
+    <color name="chip_text_light">#FFFFFF</color>
+    <color name="chip_text_selected_light">#FFFFFF</color>
+    
+    <!-- Tab Chip Colors -->
+    <color name="tab_chip_background_light">#404040</color>
+    <color name="tab_chip_background_selected_light">#FF9500</color>
+    <color name="tab_chip_text_light">#FFFFFF</color>
+    <color name="tab_chip_text_selected_light">#FFFFFF</color>
+    
+    <!-- Empty State Colors -->
+    <color name="empty_state_icon_dark">#606060</color>
+    <color name="empty_state_icon_light">#606060</color>
+    <color name="empty_state_text_dark">#808080</color>
+    <color name="empty_state_text_light">#808080</color>
+    
+    <!-- Divider and Border -->
+    <color name="divider_dark">#404040</color>
+    <color name="border_dark">#505050</color>
+    <color name="stroke_light">#505050</color>
+    
+    <!-- Overlay Colors -->
+    <color name="overlay_dark">#40000000</color>
+    <color name="selected_overlay_dark">#20FFFFFF</color>
 </resources> 

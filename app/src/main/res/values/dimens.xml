@@ -75,4 +75,6 @@
 
     <dimen name="lyric_padding_top">80dp</dimen>
     <dimen name="lyric_padding_bottom">80dp</dimen>
+
+    <dimen name="button_stroke_width">2dp</dimen>
 </resources>

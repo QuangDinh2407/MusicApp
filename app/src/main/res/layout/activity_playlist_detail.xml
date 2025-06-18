@@ -16,7 +16,7 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#99000000"/>
+        android:background="@color/overlay_light"/>
 
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/appBarLayout"
@@ -45,8 +45,9 @@
                     android:layout_height="200dp"
                     android:layout_gravity="center_horizontal"
                     android:layout_marginTop="56dp"
-                    app:cardCornerRadius="12dp"
-                    app:cardElevation="4dp">
+                    app:cardCornerRadius="16dp"
+                    app:cardElevation="8dp"
+                    app:cardBackgroundColor="@color/card_background_light">
 
                     <ImageView
                         android:id="@+id/imgPlaylistCover"
@@ -62,9 +63,13 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="32dp"
                     android:gravity="center"
-                    android:textColor="@color/textPrimary"
+                    android:textColor="@color/white"
                     android:textSize="24sp"
-                    android:textStyle="bold" />
+                    android:textStyle="bold"
+                    android:shadowColor="@color/black"
+                    android:shadowDx="1"
+                    android:shadowDy="1"
+                    android:shadowRadius="3" />
 
                 <TextView
                     android:id="@+id/tvSongCount"
@@ -72,8 +77,12 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
                     android:gravity="center"
-                    android:textColor="@color/textSecondary"
-                    android:textSize="14sp" />
+                    android:textColor="@color/light_gray"
+                    android:textSize="14sp"
+                    android:shadowColor="@color/black"
+                    android:shadowDx="1"
+                    android:shadowDy="1"
+                    android:shadowRadius="2" />
 
             </LinearLayout>
 
@@ -91,7 +100,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:fillViewport="true"
-        android:background="@android:color/transparent"
+        android:background="@color/background"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
         <LinearLayout
@@ -104,9 +113,9 @@
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="16dp"
                 android:layout_marginVertical="8dp"
-                app:cardBackgroundColor="@color/cardview_dark_background"
-                app:cardCornerRadius="8dp"
-                app:cardElevation="2dp">
+                app:cardBackgroundColor="@color/card_background_light"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="3dp">
 
                 <EditText
                     android:id="@+id/etSearch"
@@ -114,19 +123,20 @@
                     android:layout_height="48dp"
                     android:background="@null"
                     android:drawableStart="@drawable/ic_search"
-                    android:drawablePadding="8dp"
+                    android:drawablePadding="12dp"
                     android:hint="Tìm kiếm bài hát"
                     android:paddingHorizontal="16dp"
-                    android:textColor="@color/textPrimary"
-                    android:textColorHint="@color/textSecondary"
-                    android:textSize="14sp" />
+                    android:textColor="@color/text_primary_light"
+                    android:textColorHint="@color/text_hint_light"
+                    android:textSize="16sp"
+                    android:drawableTint="@color/icon_tint_light" />
             </com.google.android.material.card.MaterialCardView>
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvSongs"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:background="@android:color/transparent"
+                android:background="@color/background"
                 android:clipToPadding="true"
                 android:overScrollMode="never"
                 android:paddingHorizontal="16dp"
@@ -140,18 +150,19 @@
         android:layout_width="wrap_content"
         android:layout_height="48dp"
         android:layout_margin="16dp"
-        android:backgroundTint="@color/FlatGreen"
-        android:text="Thêm bài hát"
+        android:backgroundTint="@color/flatOrange"
+        android:text="THÊM BÀI HÁT"
         android:textSize="14sp"
-        android:textColor="@android:color/white"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
+        android:textStyle="bold"
+        android:textColor="@color/white"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
         app:icon="@drawable/ic_add"
         app:iconSize="20dp"
         app:iconPadding="8dp"
-        app:iconTint="@android:color/white"
+        app:iconTint="@color/white"
         app:cornerRadius="24dp"
-        app:elevation="2dp"
+        app:elevation="4dp"
         app:layout_anchor="@id/rvSongs"
         app:layout_anchorGravity="bottom|center"/>
 

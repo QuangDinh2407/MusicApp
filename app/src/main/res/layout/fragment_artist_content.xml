@@ -5,7 +5,10 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?attr/colorSurface"
+    android:background="@color/background"
+    android:focusableInTouchMode="true"
+    android:clickable="true"
+    android:focusable="true"
     tools:context=".MainFragment.LibraryChildFragment.ArtistContentFragment">
 
     <androidx.core.widget.NestedScrollView
@@ -14,9 +17,13 @@
         android:fillViewport="true">
 
         <LinearLayout
+            android:id="@+id/rootLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:focusableInTouchMode="true"
+            android:clickable="true"
+            android:focusable="true">
 
             <!-- Filter Chips -->
             <com.google.android.material.chip.ChipGroup
@@ -30,46 +37,58 @@
                 app:singleSelection="true">
 
                 <com.google.android.material.chip.Chip
-                    android:id="@+id/chipRecent"
+                    android:id="@+id/chipAll"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Gần đây"
-                    style="@style/Widget.MaterialComponents.Chip.Choice"/>
+                    android:text="Tất cả"
+                    style="@style/LibraryFilterChip"/>
 
                 <com.google.android.material.chip.Chip
-                    android:id="@+id/chipAlphabetical"
+                    android:id="@+id/chipFollowing"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="A-Z"
-                    style="@style/Widget.MaterialComponents.Chip.Choice"/>
+                    android:text="Đang theo dõi"
+                    style="@style/LibraryFilterChip"/>
             </com.google.android.material.chip.ChipGroup>
 
-            <!-- Search Artist Button -->
+            <!-- Search Bar -->
             <LinearLayout
-                android:id="@+id/layoutSearchArtist"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:padding="16dp"
-                android:gravity="center_vertical"
-                android:background="?attr/selectableItemBackground"
-                android:clickable="true"
-                android:focusable="true">
+                android:gravity="center_vertical">
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:hint="Tìm nghệ sĩ"
+                    app:startIconDrawable="@drawable/ic_search"
+                    style="@style/SearchInputStyle">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etSearchArtist"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="text"
+                        android:imeOptions="actionDone"
+                        android:maxLines="1"
+                        style="@style/SearchEditTextStyle"/>
+
+                </com.google.android.material.textfield.TextInputLayout>
 
                 <ImageView
+                    android:id="@+id/btnClearSearch"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
-                    android:src="@drawable/ic_search"
-                    android:padding="8dp"
-                    android:background="?attr/colorPrimary"
-                    android:contentDescription="Tìm kiếm nghệ sĩ"/>
+                    android:padding="12dp"
+                    android:src="@drawable/ic_close"
+                    android:visibility="gone"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    app:tint="@color/icon_tint_light"
+                    android:contentDescription="Clear search"/>
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Tìm nghệ sĩ"
-                    android:textSize="16sp"
-                    android:layout_marginStart="16dp"/>
             </LinearLayout>
 
             <!-- Artists List -->
@@ -92,25 +111,32 @@
                 android:visibility="gone">
 
                 <ImageView
-                    android:layout_width="120dp"
-                    android:layout_height="120dp"
+                    android:layout_width="140dp"
+                    android:layout_height="140dp"
                     android:src="@drawable/ic_artist_empty"
                     android:alpha="0.7"
-                    app:tint="?attr/colorOnSurface"/>
+                    app:tint="@color/empty_state_icon_light"/>
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Chưa theo dõi nghệ sĩ nào"
-                    android:textSize="18sp"
-                    android:layout_marginTop="16dp"/>
+                    android:textSize="22sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_primary_light"
+                    android:gravity="center"
+                    android:letterSpacing="0.01"
+                    android:layout_marginTop="32dp"/>
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Nghệ sĩ bạn theo dõi sẽ xuất hiện ở đây"
-                    android:textSize="14sp"
-                    android:layout_marginTop="8dp"/>
+                    android:textSize="16sp"
+                    android:textColor="@color/empty_state_text_light"
+                    android:gravity="center"
+                    android:lineSpacingExtra="6dp"
+                    android:layout_marginTop="12dp"/>
             </LinearLayout>
 
         </LinearLayout>

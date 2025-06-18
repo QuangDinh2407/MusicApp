@@ -96,7 +96,9 @@ public class PlaylistContentFragment extends Fragment implements PlaylistAdapter
         playlistList = new ArrayList<>();
         db = FirebaseFirestore.getInstance();
         mAuth = FirebaseAuth.getInstance();
-        prefs = getActivity().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        // Sử dụng requireContext() thay vì getActivity() để tránh crash khi theme thay đổi
+        // prefs = getActivity().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        // Khởi tạo prefs sau trong onAttach hoặc onCreateView
 
         // Khởi tạo BroadcastReceiver cho cập nhật playlist
         playlistUpdateReceiver = new BroadcastReceiver() {
@@ -144,6 +146,11 @@ public class PlaylistContentFragment extends Fragment implements PlaylistAdapter
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_playlist_content, container, false);
         
+        // Khởi tạo SharedPreferences sau khi có context đảm bảo
+        if (prefs == null) {
+            prefs = requireContext().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        }
+        
         // Khởi tạo views
         rvPlaylists = view.findViewById(R.id.rvPlaylists);
         layoutEmptyState = view.findViewById(R.id.layoutEmptyState);
@@ -166,7 +173,13 @@ public class PlaylistContentFragment extends Fragment implements PlaylistAdapter
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        if (mAuth.getCurrentUser() != null) {
+        
+        // Đảm bảo mAuth được khởi tạo
+        if (mAuth == null) {
+            mAuth = FirebaseAuth.getInstance();
+        }
+        
+        if (mAuth != null && mAuth.getCurrentUser() != null) {
             loadUserPlaylists();
         }
     }
@@ -174,7 +187,16 @@ public class PlaylistContentFragment extends Fragment implements PlaylistAdapter
     @Override
     public void onStart() {
         super.onStart();
-        mAuth.addAuthStateListener(mAuthListener);
+        
+        // Đảm bảo mAuth được khởi tạo trước khi add AuthStateListener
+        if (mAuth == null) {
+            mAuth = FirebaseAuth.getInstance();
+        }
+        
+        if (mAuth != null && mAuthListener != null) {
+            mAuth.addAuthStateListener(mAuthListener);
+        }
+        
         // Đăng ký BroadcastReceiver
         IntentFilter filter = new IntentFilter();
         filter.addAction("PLAYLIST_UPDATED");
@@ -186,42 +208,62 @@ public class PlaylistContentFragment extends Fragment implements PlaylistAdapter
     @Override
     public void onStop() {
         super.onStop();
-        if (mAuthListener != null) {
+        if (mAuthListener != null && mAuth != null) {
             mAuth.removeAuthStateListener(mAuthListener);
         }
         // Hủy đăng ký BroadcastReceiver
-        LocalBroadcastManager.getInstance(requireContext())
-            .unregisterReceiver(playlistUpdateReceiver);
+        try {
+            LocalBroadcastManager.getInstance(requireContext())
+                .unregisterReceiver(playlistUpdateReceiver);
+        } catch (Exception e) {
+            // Ignore if receiver was not registered
+        }
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        if (mAuth.getCurrentUser() != null) {
+        
+        // Đảm bảo mAuth được khởi tạo
+        if (mAuth == null) {
+            mAuth = FirebaseAuth.getInstance();
+        }
+        
+        if (mAuth != null && mAuth.getCurrentUser() != null) {
             loadUserPlaylists();
         }
     }
 
     public void refreshPlaylists() {
-        if (mAuth.getCurrentUser() != null && isAdded()) {
+        // Đảm bảo mAuth được khởi tạo và fragment vẫn attach
+        if (mAuth == null) {
+            mAuth = FirebaseAuth.getInstance();
+        }
+        
+        if (mAuth != null && mAuth.getCurrentUser() != null && isAdded() && getContext() != null) {
             loadUserPlaylists();
         }
     }
 
     @Override
     public void onPlaylistClick(Playlist playlist) {
-            Intent intent = new Intent(getContext(), PlaylistDetailActivity.class);
+        if (!isAdded() || getContext() == null) return;
+        
+        Intent intent = new Intent(getContext(), PlaylistDetailActivity.class);
         intent.putExtra("playlistId", playlist.getId());
-            startActivity(intent);
+        startActivity(intent);
     }
 
     @Override
     public void onEditClick(Playlist playlist) {
+        if (!isAdded() || getContext() == null) return;
         showEditPlaylistDialog(playlist);
     }
 
     @Override
     public void onDeleteClick(Playlist playlist) {
+        if (!isAdded() || getContext() == null) return;
+        
         new MaterialAlertDialogBuilder(requireContext())
             .setTitle("Xóa playlist")
             .setMessage("Bạn có chắc chắn muốn xóa playlist này?")
@@ -232,6 +274,8 @@ public class PlaylistContentFragment extends Fragment implements PlaylistAdapter
 
     @Override
     public void onPlaylistLongClick(Playlist playlist, View view, int position) {
+        if (!isAdded() || getContext() == null) return;
+        
         // Show popup menu
         PopupMenu popup = new PopupMenu(requireContext(), view);
         popup.getMenuInflater().inflate(R.menu.playlist_options_menu, popup.getMenu());
@@ -252,7 +296,14 @@ public class PlaylistContentFragment extends Fragment implements PlaylistAdapter
     }
 
     public void showAddPlaylistDialog() {
-        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (!isAdded() || getContext() == null) return;
+        
+        // Đảm bảo mAuth được khởi tạo
+        if (mAuth == null) {
+            mAuth = FirebaseAuth.getInstance();
+        }
+        
+        FirebaseUser currentUser = (mAuth != null) ? mAuth.getCurrentUser() : null;
         if (currentUser == null) {
             Toast.makeText(getContext(), "Vui lòng đăng nhập để tạo playlist", Toast.LENGTH_SHORT).show();
             return;
@@ -453,7 +504,12 @@ public class PlaylistContentFragment extends Fragment implements PlaylistAdapter
         if (isLoading) return; // Tránh load nhiều lần
         isLoading = true;
 
-        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        // Đảm bảo mAuth được khởi tạo
+        if (mAuth == null) {
+            mAuth = FirebaseAuth.getInstance();
+        }
+
+        FirebaseUser currentUser = (mAuth != null) ? mAuth.getCurrentUser() : null;
         if (currentUser == null) {
             isLoading = false;
             updateEmptyState();
@@ -589,7 +645,29 @@ public class PlaylistContentFragment extends Fragment implements PlaylistAdapter
     @Override
     public void onDestroy() {
         super.onDestroy();
-        hideLoading();
+        // Cleanup để tránh memory leak
+        if (progressDialog != null && progressDialog.isShowing()) {
+            progressDialog.dismiss();
+        }
+        progressDialog = null;
+        playlistUpdateReceiver = null;
+        mAuthListener = null;
+        prefs = null;
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        // Cleanup views và adapter để tránh crash khi theme thay đổi
+        if (rvPlaylists != null) {
+            rvPlaylists.setAdapter(null);
+        }
+        adapter = null;
+        rvPlaylists = null;
+        layoutEmptyState = null;
+        chipGroupFilter = null;
+        chipRecent = null;
+        chipAlphabetical = null;
     }
 
     private void deletePlaylist(Playlist playlist) {

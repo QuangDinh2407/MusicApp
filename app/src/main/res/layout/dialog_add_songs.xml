@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="20dp"
+    android:background="@color/background">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Thêm bài hát"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:textColor="@color/text_primary_light"
+        android:letterSpacing="0.01"
+        android:layout_marginBottom="16dp"/>
+
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="2dp"
+        app:cardBackgroundColor="@color/card_background_light"
+        app:strokeWidth="1dp"
+        app:strokeColor="@color/stroke_light">
+
+        <EditText
+            android:id="@+id/etSearchSongs"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:hint="Tìm kiếm bài hát..."
+            android:textColorHint="@color/text_hint_light"
+            android:textColor="@color/text_primary_light"
+            android:padding="16dp"
+            android:background="@null"
+            android:drawableStart="@drawable/ic_search"
+            android:drawablePadding="12dp"
+            android:drawableTint="@color/icon_tint_light"
+            android:maxLines="1"
+            android:singleLine="true"
+            android:textSize="16sp"
+            android:imeOptions="actionSearch"/>
+
+    </com.google.android.material.card.MaterialCardView>
+
+    <TextView
+        android:id="@+id/tvSelectedCount"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Đã chọn: 0"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:textColor="@color/text_primary_light"
+        android:layout_marginBottom="16dp"/>
+
+    <ListView
+        android:id="@+id/listViewSongs"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:divider="@color/divider_light"
+        android:dividerHeight="1dp"
+        android:background="@color/background"
+        android:clipToPadding="false"
+        android:scrollbarStyle="outsideOverlay"
+        android:fastScrollEnabled="true"/>
+
+</LinearLayout> 
