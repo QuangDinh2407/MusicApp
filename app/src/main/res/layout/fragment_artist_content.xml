@@ -5,7 +5,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?attr/colorSurface"
+    android:background="@color/background"
     android:focusableInTouchMode="true"
     android:clickable="true"
     android:focusable="true"
@@ -41,14 +41,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Tất cả"
-                    style="@style/Widget.MaterialComponents.Chip.Choice"/>
+                    style="@style/LibraryFilterChip"/>
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/chipFollowing"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Đang theo dõi"
-                    style="@style/Widget.MaterialComponents.Chip.Choice"/>
+                    style="@style/LibraryFilterChip"/>
             </com.google.android.material.chip.ChipGroup>
 
             <!-- Search Bar -->
@@ -65,7 +65,7 @@
                     android:layout_weight="1"
                     android:hint="Tìm nghệ sĩ"
                     app:startIconDrawable="@drawable/ic_search"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+                    style="@style/SearchInputStyle">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etSearchArtist"
@@ -73,7 +73,8 @@
                         android:layout_height="wrap_content"
                         android:inputType="text"
                         android:imeOptions="actionDone"
-                        android:maxLines="1"/>
+                        android:maxLines="1"
+                        style="@style/SearchEditTextStyle"/>
 
                 </com.google.android.material.textfield.TextInputLayout>
 
@@ -85,6 +86,7 @@
                     android:src="@drawable/ic_close"
                     android:visibility="gone"
                     android:background="?attr/selectableItemBackgroundBorderless"
+                    app:tint="@color/icon_tint_light"
                     android:contentDescription="Clear search"/>
 
             </LinearLayout>
@@ -109,25 +111,32 @@
                 android:visibility="gone">
 
                 <ImageView
-                    android:layout_width="120dp"
-                    android:layout_height="120dp"
+                    android:layout_width="140dp"
+                    android:layout_height="140dp"
                     android:src="@drawable/ic_artist_empty"
                     android:alpha="0.7"
-                    app:tint="?attr/colorOnSurface"/>
+                    app:tint="@color/empty_state_icon_light"/>
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Chưa theo dõi nghệ sĩ nào"
-                    android:textSize="18sp"
-                    android:layout_marginTop="16dp"/>
+                    android:textSize="22sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_primary_light"
+                    android:gravity="center"
+                    android:letterSpacing="0.01"
+                    android:layout_marginTop="32dp"/>
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Nghệ sĩ bạn theo dõi sẽ xuất hiện ở đây"
-                    android:textSize="14sp"
-                    android:layout_marginTop="8dp"/>
+                    android:textSize="16sp"
+                    android:textColor="@color/empty_state_text_light"
+                    android:gravity="center"
+                    android:lineSpacingExtra="6dp"
+                    android:layout_marginTop="12dp"/>
             </LinearLayout>
 
         </LinearLayout>

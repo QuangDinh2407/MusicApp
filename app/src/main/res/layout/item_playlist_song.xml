@@ -4,15 +4,15 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:padding="8dp"
-    android:background="@drawable/background_item_song_in_artist">
+    android:padding="12dp"
+    android:background="@color/card_background_light">
 
     <com.google.android.material.imageview.ShapeableImageView
         android:id="@+id/imgCover"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
+        android:layout_width="54dp"
+        android:layout_height="54dp"
         android:scaleType="centerCrop"
-        app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Small"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.MediumCorner"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"/>
@@ -24,9 +24,12 @@
         android:layout_marginStart="16dp"
         android:layout_marginEnd="8dp"
         android:textSize="16sp"
-        android:maxLines="1"
+        android:textStyle="bold"
+        android:textColor="@color/text_primary_light"
+        android:maxLines="2"
         android:ellipsize="end"
         app:layout_constraintStart_toEndOf="@id/imgCover"
+        app:layout_constraintEnd_toStartOf="@id/btnMore"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"/>
 
@@ -39,6 +42,7 @@
         android:src="@drawable/ic_more_vert"
         android:background="?attr/selectableItemBackgroundBorderless"
         android:contentDescription="More options"
+        app:tint="@color/icon_tint_light"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"/>

@@ -147,4 +147,106 @@
         <item name="cornerFamily">rounded</item>
         <item name="cornerSize">50%</item>
     </style>
+
+    <!-- Medium Corner Shape for Material Components -->
+    <style name="ShapeAppearance.MediumCorner" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">8dp</item>
+    </style>
+
+    <!-- Custom Chip Styles for Library -->
+    <style name="LibraryFilterChip" parent="Widget.MaterialComponents.Chip.Filter">
+        <item name="chipBackgroundColor">@color/chip_background_selector</item>
+        <item name="android:textColor">@color/chip_text_selector</item>
+        <item name="chipStrokeColor">?attr/colorOnSurface</item>
+        <item name="chipStrokeWidth">1dp</item>
+        <item name="chipCornerRadius">20dp</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">normal</item>
+        <item name="chipMinHeight">32dp</item>
+        <item name="textStartPadding">12dp</item>
+        <item name="textEndPadding">12dp</item>
+        <item name="android:textAppearance">@style/TextAppearance.MaterialComponents.Chip</item>
+    </style>
+
+    <!-- Custom Tab Chip Style -->
+    <style name="LibraryTabChip" parent="Widget.MaterialComponents.Chip.Choice">
+        <item name="chipBackgroundColor">@color/tab_chip_background_selector</item>
+        <item name="android:textColor">@color/tab_chip_text_selector</item>
+        <item name="chipStrokeWidth">0dp</item>
+        <item name="chipCornerRadius">16dp</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="chipMinHeight">36dp</item>
+        <item name="textStartPadding">16dp</item>
+        <item name="textEndPadding">16dp</item>
+        <item name="android:textAppearance">@style/TextAppearance.MaterialComponents.Chip</item>
+        <item name="chipIconSize">0dp</item>
+        <item name="ensureMinTouchTargetSize">true</item>
+    </style>
+
+    <!-- Fallback Simple Tab Chip Style -->
+    <style name="SimpleLibraryTabChip" parent="Widget.MaterialComponents.Chip.Choice">
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="chipCornerRadius">16dp</item>
+    </style>
+
+    <!-- Fallback Simple Filter Chip Style -->
+    <style name="SimpleLibraryFilterChip" parent="Widget.MaterialComponents.Chip.Filter">
+        <item name="android:textSize">14sp</item>
+        <item name="chipCornerRadius">20dp</item>
+    </style>
+
+    <!-- Follow Button Style -->
+    <style name="FollowButton" parent="Widget.MaterialComponents.Button.OutlinedButton">
+        <item name="android:textColor">@color/text_primary_light</item>
+        <item name="strokeColor">@color/stroke_light</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="cornerRadius">20dp</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="rippleColor">@color/ripple_light</item>
+    </style>
+
+    <!-- Light Mode Dialog Theme -->
+    <style name="LightDialogTheme" parent="Theme.MaterialComponents.Light.Dialog.Alert">
+        <item name="colorPrimary">@color/flatOrange</item>
+        <item name="colorAccent">@color/flatOrange</item>
+        <item name="android:windowBackground">@color/background</item>
+        <item name="android:textColorPrimary">@color/text_primary_light</item>
+        <item name="android:textColorSecondary">@color/text_secondary_light</item>
+        <item name="materialButtonStyle">@style/LightDialogButton</item>
+    </style>
+
+    <!-- Light Mode Dialog Button Style -->
+    <style name="LightDialogButton" parent="Widget.MaterialComponents.Button.TextButton">
+        <item name="android:textColor">@color/flatOrange</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="rippleColor">@color/ripple_light</item>
+    </style>
+
+    <!-- Search Input Style for Light Mode -->
+    <style name="SearchInputStyle" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+        <item name="boxStrokeColor">@color/text_primary_light</item>
+        <item name="boxStrokeWidth">2dp</item>
+        <item name="boxCornerRadiusTopStart">12dp</item>
+        <item name="boxCornerRadiusTopEnd">12dp</item>
+        <item name="boxCornerRadiusBottomStart">12dp</item>
+        <item name="boxCornerRadiusBottomEnd">12dp</item>
+        <item name="android:textColorHint">@color/text_secondary_light</item>
+        <item name="hintTextColor">@color/text_secondary_light</item>
+        <item name="startIconTint">@color/icon_tint_light</item>
+        <item name="endIconTint">@color/icon_tint_light</item>
+    </style>
+
+    <!-- Search EditText Style -->
+    <style name="SearchEditTextStyle" parent="Widget.MaterialComponents.TextInputEditText.OutlinedBox">
+        <item name="android:textColor">@color/text_primary_light</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:textCursorDrawable">@null</item>
+    </style>
+
 </resources>

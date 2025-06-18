@@ -32,7 +32,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
             android:textSize="16sp"
-            android:textColor="?attr/colorOnSurface"
+            android:textColor="@color/text_primary_light"
             android:textStyle="bold"
             tools:text="Artist Name"/>
 
@@ -47,8 +47,7 @@
         android:minHeight="40dp"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
-        android:textAllCaps="false"
-        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        style="@style/FollowButton"
         tools:text="Theo dõi"/>
 
 </LinearLayout> 

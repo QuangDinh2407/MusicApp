@@ -115,18 +115,47 @@ public class AlbumContentFragment extends Fragment {
         db = FirebaseFirestore.getInstance();
         currentUser = FirebaseAuth.getInstance().getCurrentUser();
         
-        // Register broadcast receiver
-        IntentFilter filter = new IntentFilter(BROADCAST_FAVORITE_UPDATED);
-        LocalBroadcastManager.getInstance(requireContext())
-            .registerReceiver(favoriteUpdateReceiver, filter);
+        // Register broadcast receiver only if context is available
+        if (getContext() != null) {
+            IntentFilter filter = new IntentFilter(BROADCAST_FAVORITE_UPDATED);
+            LocalBroadcastManager.getInstance(requireContext())
+                .registerReceiver(favoriteUpdateReceiver, filter);
+        }
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-        // Unregister broadcast receiver
-        LocalBroadcastManager.getInstance(requireContext())
-            .unregisterReceiver(favoriteUpdateReceiver);
+        // Unregister broadcast receiver safely
+        if (getContext() != null) {
+            try {
+                LocalBroadcastManager.getInstance(requireContext())
+                    .unregisterReceiver(favoriteUpdateReceiver);
+            } catch (IllegalArgumentException e) {
+                // Receiver was not registered, ignore
+            }
+        }
+        // Cleanup data
+        if (favoriteAlbums != null) {
+            favoriteAlbums.clear();
+        }
+        db = null;
+        currentUser = null;
+    }
+    
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        // Cleanup views và adapter để tránh crash khi theme thay đổi
+        if (rvAlbum != null) {
+            rvAlbum.setAdapter(null);
+        }
+        albumAdapter = null;
+        rvAlbum = null;
+        layoutEmptyState = null;
+        chipGroupFilter = null;
+        chipRecent = null;
+        chipAlphabetical = null;
     }
 
     @Override
@@ -151,6 +180,8 @@ public class AlbumContentFragment extends Fragment {
     }
 
     private void setupRecyclerView() {
+        if (getContext() == null) return;
+        
         int spanCount = 2; // Number of columns
         GridLayoutManager layoutManager = new GridLayoutManager(getContext(), spanCount);
         rvAlbum.setLayoutManager(layoutManager);
@@ -164,7 +195,12 @@ public class AlbumContentFragment extends Fragment {
     }
 
     private void loadFavoriteAlbums() {
+        // Kiểm tra currentUser và fragment state
         if (currentUser == null) {
+            currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        }
+        
+        if (currentUser == null || !isAdded() || getContext() == null) {
             showEmptyState(true);
             return;
         }
@@ -179,6 +215,8 @@ public class AlbumContentFragment extends Fragment {
             .document(currentUser.getUid())
             .get()
             .addOnSuccessListener(documentSnapshot -> {
+                if (!isAdded() || getContext() == null) return;
+                
                 List<String> favoriteAlbumNames = (List<String>) documentSnapshot.get("favoriteAlbums");
                 if (favoriteAlbumNames != null && !favoriteAlbumNames.isEmpty()) {
                     // Load each album's details
@@ -187,6 +225,8 @@ public class AlbumContentFragment extends Fragment {
                             .whereEqualTo("title", albumName)
                             .get()
                             .addOnSuccessListener(querySnapshot -> {
+                                if (!isAdded() || getContext() == null) return;
+                                
                                 if (!querySnapshot.isEmpty()) {
                                     DocumentSnapshot doc = querySnapshot.getDocuments().get(0);
                                     Album album = doc.toObject(Album.class);
@@ -203,6 +243,8 @@ public class AlbumContentFragment extends Fragment {
                 }
             })
             .addOnFailureListener(e -> {
+                if (!isAdded() || getContext() == null) return;
+                
                 Toast.makeText(requireContext(),
                     "Lỗi khi tải danh sách album yêu thích",
                     Toast.LENGTH_SHORT).show();
@@ -211,11 +253,13 @@ public class AlbumContentFragment extends Fragment {
     }
 
     private void updateAlbumList() {
+        if (!isAdded() || getContext() == null) return;
+        
         if (favoriteAlbums.isEmpty()) {
             showEmptyState(true);
         } else {
             showEmptyState(false);
-            if (albumAdapter != null) {
+            if (albumAdapter != null && chipGroupFilter != null) {
                 // Áp dụng sắp xếp dựa trên chip đang được chọn
                 int checkedId = chipGroupFilter.getCheckedChipId();
                 if (checkedId == R.id.chipAlphabetical) {
@@ -232,13 +276,26 @@ public class AlbumContentFragment extends Fragment {
     }
 
     private void setupListeners() {
+        if (chipGroupFilter == null) return;
+        
         chipGroupFilter.setOnCheckedChangeListener((group, checkedId) -> {
+            if (!isAdded() || getContext() == null) return;
+            
+            // Kiểm tra currentUser trước khi sử dụng
+            if (currentUser == null) {
+                currentUser = FirebaseAuth.getInstance().getCurrentUser();
+            }
+            
+            if (currentUser == null) return;
+            
             if (checkedId == R.id.chipRecent) {
                 // Sắp xếp theo thời gian thêm vào gần đây nhất
                 db.collection("users")
                     .document(currentUser.getUid())
                     .get()
                     .addOnSuccessListener(documentSnapshot -> {
+                        if (!isAdded() || getContext() == null || albumAdapter == null) return;
+                        
                         List<String> favoriteAlbumNames = (List<String>) documentSnapshot.get("favoriteAlbums");
                         if (favoriteAlbumNames != null) {
                             // Sắp xếp album theo thứ tự trong favoriteAlbums (thứ tự thêm vào)
@@ -257,7 +314,9 @@ public class AlbumContentFragment extends Fragment {
                     if (a2.getTitle() == null) return -1;
                     return a1.getTitle().compareToIgnoreCase(a2.getTitle());
                 });
-                albumAdapter.notifyDataSetChanged();
+                if (albumAdapter != null) {
+                    albumAdapter.notifyDataSetChanged();
+                }
             }
         });
     }
@@ -268,10 +327,14 @@ public class AlbumContentFragment extends Fragment {
     }
 
     private void showAlbumSongs(Album album) {
+        if (!isAdded() || getContext() == null) return;
+        
         // Load songs for this album
         FirestoreUtils.getSongsByAlbumId(album.getId(), new FirestoreUtils.FirestoreCallback<List<Song>>() {
             @Override
             public void onSuccess(List<Song> songs) {
+                if (!isAdded() || getContext() == null) return;
+                
                 // Create and show AlbumSongsFragment
                 AlbumSongsFragment albumSongsFragment = AlbumSongsFragment.newInstance(
                     songs,
@@ -309,6 +372,8 @@ public class AlbumContentFragment extends Fragment {
 
             @Override
             public void onError(Exception e) {
+                if (!isAdded() || getContext() == null) return;
+                
                 Toast.makeText(requireContext(),
                     "Lỗi khi tải danh sách bài hát: " + e.getMessage(),
                     Toast.LENGTH_SHORT).show();

@@ -5,22 +5,24 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?attr/colorSurface"
+    android:background="@color/background"
     tools:context=".MainFragment.LibraryFragment">
 
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="?attr/colorSurface"
-        android:elevation="0dp">
+        android:background="@color/background"
+        android:elevation="0dp"
+        app:liftOnScroll="true">
 
         <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:paddingTop="25dp"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:paddingBottom="8dp"
             app:layout_scrollFlags="scroll|enterAlways">
 
             <!-- Header Section -->
@@ -28,18 +30,19 @@
                 android:id="@+id/headerLayout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-
                 android:padding="16dp">
 
                 <com.google.android.material.imageview.ShapeableImageView
                     android:id="@+id/imgAvatar"
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
                     android:scaleType="centerCrop"
                     android:src="@drawable/avata"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent"
                     app:shapeAppearanceOverlay="@style/CircleImageView"
+                    app:strokeWidth="2dp"
+                    app:strokeColor="@color/flatOrange"
                     tools:src="@tools:sample/avatars" />
 
                 <TextView
@@ -48,48 +51,54 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="16dp"
                     android:layout_marginEnd="18dp"
-                    android:textSize="18dp"
+                    android:textSize="22sp"
                     android:text="Thư viện của bạn"
                     android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
+                    android:textColor="@color/text_primary_light"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.01"
                     app:layout_constraintEnd_toStartOf="@+id/btnSearch"
                     app:layout_constraintStart_toEndOf="@+id/imgAvatar"
                     app:layout_constraintTop_toTopOf="parent" />
 
                 <ImageButton
                     android:id="@+id/btnSearch"
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
                     android:layout_marginEnd="8dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="Tìm kiếm"
                     android:src="@drawable/ic_search"
+                    android:padding="10dp"
                     app:layout_constraintEnd_toStartOf="@+id/btnSort"
                     app:layout_constraintTop_toTopOf="parent"
-                    app:tint="?attr/colorOnSurface" />
+                    app:tint="@color/icon_tint_light" />
 
                 <ImageButton
                     android:id="@+id/btnSort"
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
                     android:layout_marginEnd="8dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="Sắp xếp"
                     android:src="@drawable/ic_sort"
+                    android:padding="10dp"
                     android:visibility="gone"
                     app:layout_constraintEnd_toStartOf="@+id/btnAdd"
                     app:layout_constraintTop_toTopOf="parent"
-                    app:tint="?attr/colorOnSurface" />
+                    app:tint="@color/icon_tint_light" />
 
                 <ImageButton
                     android:id="@+id/btnAdd"
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="Thêm mới"
                     android:src="@drawable/ic_add"
+                    android:padding="10dp"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintTop_toTopOf="parent"
-                    app:tint="?attr/colorOnSurface" />
+                    app:tint="@color/icon_tint_primary_light" />
 
             </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -98,29 +107,31 @@
                 android:id="@+id/chipGroupTabs"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="8dp"
-                app:singleSelection="true">
+                android:layout_marginBottom="12dp"
+                android:layout_marginTop="4dp"
+                app:singleSelection="true"
+                app:chipSpacingHorizontal="12dp">
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/chipPlaylists"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Playlists"
-                    style="@style/Widget.MaterialComponents.Chip.Choice"/>
+                    style="@style/LibraryTabChip"/>
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/chipArtists"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Nghệ sĩ"
-                    style="@style/Widget.MaterialComponents.Chip.Choice"/>
+                    style="@style/LibraryTabChip"/>
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/chipAlbums"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Albums"
-                    style="@style/Widget.MaterialComponents.Chip.Choice"/>
+                    style="@style/LibraryTabChip"/>
 
             </com.google.android.material.chip.ChipGroup>
 

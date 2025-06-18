@@ -37,9 +37,11 @@ public class LibraryFragment extends Fragment {
     private ShapeableImageView ivUserAvatar;
     private FirebaseAuth mAuth;
     private LibraryPagerAdapter pagerAdapter;
-    private static PlaylistContentFragment playlistFragment;
-    private static ArtistContentFragment artistFragment;
-    private static AlbumContentFragment albumFragment;
+    
+    // Xóa static - tạo mới mỗi lần để tránh crash khi theme thay đổi
+    private PlaylistContentFragment playlistFragment;
+    private ArtistContentFragment artistFragment;
+    private AlbumContentFragment albumFragment;
 
     public LibraryFragment() {
         // Required empty public constructor
@@ -53,7 +55,12 @@ public class LibraryFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         mAuth = FirebaseAuth.getInstance();
-        // Khởi tạo các fragment
+        // Tạo fragments mới mỗi lần onCreate để tránh giữ context cũ
+        createChildFragments();
+    }
+    
+    private void createChildFragments() {
+        // Tạo fragments mới, không static
         playlistFragment = PlaylistContentFragment.newInstance();
         artistFragment = ArtistContentFragment.newInstance();
         albumFragment = AlbumContentFragment.newInstance();
@@ -112,11 +119,14 @@ public class LibraryFragment extends Fragment {
                 break;
         }
 
-        if (currentFragment != null) {
-            // Cập nhật UI hoặc dữ liệu của fragment hiện tại nếu cần
+        // Chỉ refresh khi fragment đã sẵn sàng và được attach
+        if (currentFragment != null && currentFragment.isAdded() && 
+            currentFragment.getContext() != null) {
+            
             if (currentFragment instanceof PlaylistContentFragment) {
                 ((PlaylistContentFragment) currentFragment).refreshPlaylists();
             }
+            // Có thể thêm refresh cho ArtistContentFragment và AlbumContentFragment nếu cần
         }
     }
 
@@ -164,7 +174,9 @@ public class LibraryFragment extends Fragment {
 
             int currentPosition = viewPager.getCurrentItem();
             if (currentPosition == 0) {
-                playlistFragment.showAddPlaylistDialog();
+                if (playlistFragment != null) {
+                    playlistFragment.showAddPlaylistDialog();
+                }
             } else if (currentPosition == 2) {
                 Toast.makeText(getContext(), "Chức năng thêm Album sẽ được triển khai sau", Toast.LENGTH_SHORT).show();
             }
@@ -211,10 +223,8 @@ public class LibraryFragment extends Fragment {
         btnAdd.setOnClickListener(v -> {
             int selectedChipId = chipGroupTabs.getCheckedChipId();
             if (selectedChipId == R.id.chipPlaylists) {
-                Fragment currentFragment = getChildFragmentManager()
-                        .findFragmentByTag("f" + viewPager.getCurrentItem());
-                if (currentFragment instanceof PlaylistContentFragment) {
-                    ((PlaylistContentFragment) currentFragment).showAddPlaylistDialog();
+                if (playlistFragment != null) {
+                    playlistFragment.showAddPlaylistDialog();
                 }
             } else if (selectedChipId == R.id.chipAlbums) {
                 // TODO: Add new album
@@ -247,8 +257,8 @@ public class LibraryFragment extends Fragment {
         });
     }
 
-    // Adapter for ViewPager2
-    private static class LibraryPagerAdapter extends androidx.viewpager2.adapter.FragmentStateAdapter {
+    // Adapter for ViewPager2 - Xóa static
+    private class LibraryPagerAdapter extends androidx.viewpager2.adapter.FragmentStateAdapter {
         public LibraryPagerAdapter(@NonNull Fragment fragment) {
             super(fragment);
         }
@@ -256,15 +266,25 @@ public class LibraryFragment extends Fragment {
         @NonNull
         @Override
         public Fragment createFragment(int position) {
+            // Tạo fragments mới nếu null, đảm bảo không dùng fragments cũ
             switch (position) {
                 case 0:
+                    if (playlistFragment == null) {
+                        playlistFragment = PlaylistContentFragment.newInstance();
+                    }
                     return playlistFragment;
                 case 1:
+                    if (artistFragment == null) {
+                        artistFragment = ArtistContentFragment.newInstance();
+                    }
                     return artistFragment;
                 case 2:
+                    if (albumFragment == null) {
+                        albumFragment = AlbumContentFragment.newInstance();
+                    }
                     return albumFragment;
                 default:
-                    return playlistFragment;
+                    return PlaylistContentFragment.newInstance();
             }
         }
 
@@ -277,6 +297,27 @@ public class LibraryFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        updateCurrentFragment(viewPager.getCurrentItem());
+        // Chỉ update khi ViewPager đã được khởi tạo
+        if (viewPager != null) {
+            updateCurrentFragment(viewPager.getCurrentItem());
+        }
+    }
+    
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        // Cleanup để tránh memory leak
+        if (viewPager != null) {
+            viewPager.setAdapter(null);
+        }
+    }
+    
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        // Cleanup fragments
+        playlistFragment = null;
+        artistFragment = null;
+        albumFragment = null;
     }
 }

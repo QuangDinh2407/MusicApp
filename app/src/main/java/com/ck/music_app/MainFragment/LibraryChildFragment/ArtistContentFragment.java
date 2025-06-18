@@ -24,6 +24,7 @@ import com.ck.music_app.R;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -82,7 +83,10 @@ public class ArtistContentFragment extends Fragment implements ArtistAdapter.OnA
 
     private void setupFirebase() {
         db = FirebaseFirestore.getInstance();
-        currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser != null) {
+            currentUserId = currentUser.getUid();
+        }
     }
 
     private void initializeViews(View view) {
@@ -100,6 +104,7 @@ public class ArtistContentFragment extends Fragment implements ArtistAdapter.OnA
     }
 
     private void setupRecyclerView() {
+        if (getContext() == null) return;
         artistAdapter = new ArtistAdapter(new ArrayList<>(), this);
         rvFollowedArtists.setLayoutManager(new LinearLayoutManager(getContext()));
         rvFollowedArtists.setAdapter(artistAdapter);
@@ -167,7 +172,9 @@ public class ArtistContentFragment extends Fragment implements ArtistAdapter.OnA
             if (getActivity() != null && getActivity().getCurrentFocus() != null) {
                 android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager)
                         getActivity().getSystemService(android.content.Context.INPUT_METHOD_SERVICE);
-                imm.hideSoftInputFromWindow(getActivity().getCurrentFocus().getWindowToken(), 0);
+                if (imm != null) {
+                    imm.hideSoftInputFromWindow(getActivity().getCurrentFocus().getWindowToken(), 0);
+                }
             }
         }
     }
@@ -188,9 +195,13 @@ public class ArtistContentFragment extends Fragment implements ArtistAdapter.OnA
     }
 
     private void loadArtists() {
+        if (!isAdded() || getContext() == null) return;
+        
         // Load all artists
         db.collection("artists").get()
             .addOnSuccessListener(queryDocumentSnapshots -> {
+                if (!isAdded() || getContext() == null) return;
+                
                 allArtists.clear();
                 for (var doc : queryDocumentSnapshots) {
                     Artist artist = doc.toObject(Artist.class);
@@ -202,14 +213,31 @@ public class ArtistContentFragment extends Fragment implements ArtistAdapter.OnA
                 loadFollowedArtists();
             })
             .addOnFailureListener(e -> {
+                if (!isAdded() || getContext() == null) return;
                 Toast.makeText(getContext(), "Lỗi khi tải danh sách nghệ sĩ", Toast.LENGTH_SHORT).show();
             });
     }
 
     private void loadFollowedArtists() {
+        if (!isAdded() || getContext() == null) return;
+        
+        // Kiểm tra currentUserId trước khi sử dụng
+        if (currentUserId == null) {
+            FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+            if (currentUser != null) {
+                currentUserId = currentUser.getUid();
+            } else {
+                // Người dùng chưa đăng nhập, chỉ hiển thị empty state
+                showEmptyState(true);
+                return;
+            }
+        }
+        
         db.collection("users").document(currentUserId)
             .collection("followedArtists").get()
             .addOnSuccessListener(queryDocumentSnapshots -> {
+                if (!isAdded() || getContext() == null) return;
+                
                 followedArtists.clear();
                 for (var doc : queryDocumentSnapshots) {
                     String artistId = doc.getId();
@@ -223,21 +251,26 @@ public class ArtistContentFragment extends Fragment implements ArtistAdapter.OnA
                 }
                 
                 // Update adapter with followed artists
-                List<String> followedIds = followedArtists.stream()
-                        .map(Artist::getId)
-                        .collect(Collectors.toList());
-                artistAdapter.updateFollowedArtists(followedIds);
-                
-                // Update UI based on current chip selection and search query
-                filterArtists(etSearchArtist.getText().toString());
+                if (artistAdapter != null) {
+                    List<String> followedIds = followedArtists.stream()
+                            .map(Artist::getId)
+                            .collect(Collectors.toList());
+                    artistAdapter.updateFollowedArtists(followedIds);
+                    
+                    // Update UI based on current chip selection and search query
+                    filterArtists(etSearchArtist != null ? etSearchArtist.getText().toString() : "");
+                }
             })
             .addOnFailureListener(e -> {
+                if (!isAdded() || getContext() == null) return;
                 Toast.makeText(getContext(), "Lỗi khi tải danh sách nghệ sĩ đang theo dõi", Toast.LENGTH_SHORT).show();
             });
     }
 
     private void updateArtistsList(List<Artist> artists) {
-        artistAdapter.updateData(artists);
+        if (artistAdapter != null) {
+            artistAdapter.updateData(artists);
+        }
         showEmptyState(artists.isEmpty());
     }
 
@@ -248,11 +281,25 @@ public class ArtistContentFragment extends Fragment implements ArtistAdapter.OnA
 
     @Override
     public void onArtistClick(Artist artist) {
+        if (!isAdded() || getContext() == null) return;
         //
     }
 
     @Override
     public void onFollowClick(Artist artist, boolean isFollowing) {
+        if (!isAdded() || getContext() == null) return;
+        
+        // Kiểm tra currentUserId trước khi sử dụng
+        if (currentUserId == null) {
+            FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+            if (currentUser != null) {
+                currentUserId = currentUser.getUid();
+            } else {
+                Toast.makeText(getContext(), "Vui lòng đăng nhập để theo dõi nghệ sĩ", Toast.LENGTH_SHORT).show();
+                return;
+            }
+        }
+        
         DocumentReference userDoc = db.collection("users").document(currentUserId);
         DocumentReference artistDoc = db.collection("artists").document(artist.getId());
 
@@ -261,50 +308,99 @@ public class ArtistContentFragment extends Fragment implements ArtistAdapter.OnA
             userDoc.collection("followedArtists").document(artist.getId())
                     .set(artist)
                     .addOnSuccessListener(aVoid -> {
+                        if (!isAdded() || getContext() == null) return;
+                        
                         artistDoc.update("followerCount", FieldValue.increment(1));
                         followedArtists.add(artist);
                         Toast.makeText(getContext(), "Đã theo dõi " + artist.getName(), Toast.LENGTH_SHORT).show();
                         
                         // Update adapter with new followed artists list
-                        List<String> followedIds = followedArtists.stream()
-                                .map(Artist::getId)
-                                .collect(Collectors.toList());
-                        artistAdapter.updateFollowedArtists(followedIds);
+                        if (artistAdapter != null) {
+                            List<String> followedIds = followedArtists.stream()
+                                    .map(Artist::getId)
+                                    .collect(Collectors.toList());
+                            artistAdapter.updateFollowedArtists(followedIds);
+                        }
                     })
                     .addOnFailureListener(e -> {
+                        if (!isAdded() || getContext() == null) return;
                         Toast.makeText(getContext(), "Lỗi khi theo dõi nghệ sĩ", Toast.LENGTH_SHORT).show();
                         // Revert button state
-                        artistAdapter.updateFollowedArtists(followedArtists.stream()
-                                .map(Artist::getId)
-                                .collect(Collectors.toList()));
+                        if (artistAdapter != null) {
+                            artistAdapter.updateFollowedArtists(followedArtists.stream()
+                                    .map(Artist::getId)
+                                    .collect(Collectors.toList()));
+                        }
                     });
         } else {
             // Unfollow artist
             userDoc.collection("followedArtists").document(artist.getId())
                     .delete()
                     .addOnSuccessListener(aVoid -> {
+                        if (!isAdded() || getContext() == null) return;
+                        
                         artistDoc.update("followerCount", FieldValue.increment(-1));
                         followedArtists.removeIf(a -> a.getId().equals(artist.getId()));
                         Toast.makeText(getContext(), "Đã hủy theo dõi " + artist.getName(), Toast.LENGTH_SHORT).show();
                         
                         // Update adapter with new followed artists list
-                        List<String> followedIds = followedArtists.stream()
-                                .map(Artist::getId)
-                                .collect(Collectors.toList());
-                        artistAdapter.updateFollowedArtists(followedIds);
+                        if (artistAdapter != null) {
+                            List<String> followedIds = followedArtists.stream()
+                                    .map(Artist::getId)
+                                    .collect(Collectors.toList());
+                            artistAdapter.updateFollowedArtists(followedIds);
+                        }
                         
                         // Refresh the list if we're in following tab
                         if (chipFollowing.isChecked()) {
-                            filterArtists(etSearchArtist.getText().toString());
+                            filterArtists(etSearchArtist != null ? etSearchArtist.getText().toString() : "");
                         }
                     })
                     .addOnFailureListener(e -> {
+                        if (!isAdded() || getContext() == null) return;
                         Toast.makeText(getContext(), "Lỗi khi hủy theo dõi nghệ sĩ", Toast.LENGTH_SHORT).show();
                         // Revert button state
-                        artistAdapter.updateFollowedArtists(followedArtists.stream()
-                                .map(Artist::getId)
-                                .collect(Collectors.toList()));
+                        if (artistAdapter != null) {
+                            artistAdapter.updateFollowedArtists(followedArtists.stream()
+                                    .map(Artist::getId)
+                                    .collect(Collectors.toList()));
+                        }
                     });
         }
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        // Cleanup views và adapter để tránh crash khi theme thay đổi
+        if (rvFollowedArtists != null) {
+            rvFollowedArtists.setAdapter(null);
+        }
+        artistAdapter = null;
+        rvFollowedArtists = null;
+        layoutEmptyState = null;
+        chipGroupFilter = null;
+        chipAll = null;
+        chipFollowing = null;
+        etSearchArtist = null;
+        btnClearSearch = null;
+        rootLayout = null;
+    }
+    
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        // Cleanup data để tránh memory leak
+        if (allArtists != null) {
+            allArtists.clear();
+        }
+        if (followedArtists != null) {
+            followedArtists.clear();
+        }
+        if (filteredArtists != null) {
+            filteredArtists.clear();
+        }
+        db = null;
+        currentUserId = null;
     }
 } 

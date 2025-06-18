@@ -289,6 +289,7 @@ public class PlaylistDetailActivity extends AppCompatActivity implements Playlis
         Query query = db.collection("songs");
         query.get().addOnSuccessListener(queryDocumentSnapshots -> {
             List<Song> allSongs = new ArrayList<>();
+            List<Song> filteredSongs = new ArrayList<>();
             List<Song> songsToAdd = new ArrayList<>();
             
             for (DocumentSnapshot document : queryDocumentSnapshots) {
@@ -297,16 +298,23 @@ public class PlaylistDetailActivity extends AppCompatActivity implements Playlis
                     song.setSongId(document.getId()); // Set song ID
                     if (!playlist.getSongIds().contains(document.getId())) {
                         allSongs.add(song);
+                        filteredSongs.add(song); // Khởi tạo danh sách lọc với tất cả bài hát
                     }
                 }
             }
 
             // Tạo AlertDialog với ListView custom
-            AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setTitle("Thêm bài hát");
+            AlertDialog.Builder builder = new AlertDialog.Builder(this, R.style.LightDialogTheme);
+            View dialogView = getLayoutInflater().inflate(R.layout.dialog_add_songs, null);
+            TextView tvSelectedCount = dialogView.findViewById(R.id.tvSelectedCount);
+            EditText etSearchSongs = dialogView.findViewById(R.id.etSearchSongs);
+            ListView listView = dialogView.findViewById(R.id.listViewSongs);
+
+            // Cập nhật số lượng bài hát đã chọn
+            tvSelectedCount.setText("Đã chọn: 0");
 
             // Tạo adapter cho ListView với layout tùy chỉnh
-            ArrayAdapter<Song> adapter = new ArrayAdapter<Song>(this, 0, allSongs) {
+            ArrayAdapter<Song> adapter = new ArrayAdapter<Song>(this, 0, filteredSongs) {
                 @NonNull
                 @Override
                 public View getView(int position, View convertView, @NonNull ViewGroup parent) {
@@ -319,6 +327,7 @@ public class PlaylistDetailActivity extends AppCompatActivity implements Playlis
                         ImageView imgSongCover = convertView.findViewById(R.id.imgSongCover);
                         TextView tvSongTitle = convertView.findViewById(R.id.tvSongTitle);
                         TextView tvArtistName = convertView.findViewById(R.id.tvArtistName);
+                        View selectedBackground = convertView.findViewById(R.id.selectedBackground);
 
                         tvSongTitle.setText(song.getTitle());
                         tvArtistName.setText(song.getArtistId());
@@ -330,31 +339,63 @@ public class PlaylistDetailActivity extends AppCompatActivity implements Playlis
                             .error(R.drawable.love)
                             .into(imgSongCover);
 
-                        // Đánh dấu các bài hát đã được chọn
-                        convertView.setActivated(songsToAdd.contains(song));
+                        // Hiển thị background mờ nếu item được chọn
+                        selectedBackground.setVisibility(songsToAdd.contains(song) ? View.VISIBLE : View.GONE);
                     }
 
                     return convertView;
                 }
             };
 
-            ListView listView = new ListView(this);
             listView.setAdapter(adapter);
             listView.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
             
             // Xử lý sự kiện khi người dùng chọn/bỏ chọn bài hát
             listView.setOnItemClickListener((parent, view, position, id) -> {
-                Song song = allSongs.get(position);
+                Song song = filteredSongs.get(position);
+                View selectedBackground = view.findViewById(R.id.selectedBackground);
+                
                 if (songsToAdd.contains(song)) {
                     songsToAdd.remove(song);
-                    view.setActivated(false);
+                    selectedBackground.setVisibility(View.GONE);
                 } else {
                     songsToAdd.add(song);
-                    view.setActivated(true);
+                    selectedBackground.setVisibility(View.VISIBLE);
                 }
+                
+                // Cập nhật số lượng bài hát đã chọn
+                tvSelectedCount.setText("Đã chọn: " + songsToAdd.size());
             });
 
-            builder.setView(listView);
+            // Xử lý sự kiện tìm kiếm
+            etSearchSongs.addTextChangedListener(new TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {
+                    String searchText = s.toString().toLowerCase().trim();
+                    filteredSongs.clear();
+                    
+                    if (searchText.isEmpty()) {
+                        filteredSongs.addAll(allSongs);
+                    } else {
+                        for (Song song : allSongs) {
+                            if (song.getTitle().toLowerCase().contains(searchText) ||
+                                song.getArtistId().toLowerCase().contains(searchText)) {
+                                filteredSongs.add(song);
+                            }
+                        }
+                    }
+                    
+                    adapter.notifyDataSetChanged();
+                }
+
+                @Override
+                public void afterTextChanged(Editable s) {}
+            });
+
+            builder.setView(dialogView);
             
             builder.setPositiveButton("Thêm", (dialog, which) -> {
                 if (!songsToAdd.isEmpty()) {
@@ -606,7 +647,7 @@ public class PlaylistDetailActivity extends AppCompatActivity implements Playlis
             }
 
             // Tạo AlertDialog với ListView custom
-            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            AlertDialog.Builder builder = new AlertDialog.Builder(this, R.style.LightDialogTheme);
             builder.setTitle("Chọn bài hát thay thế");
 
             // Tạo adapter cho ListView
