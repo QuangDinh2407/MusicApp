@@ -31,6 +31,7 @@ import com.ck.music_app.Services.MusicService;
 import com.ck.music_app.utils.GradientUtils;
 import com.ck.music_app.utils.MusicUtils;
 import com.ck.music_app.utils.PlaylistDialogUtils;
+import com.ck.music_app.Services.FirebaseService;
 
 import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
@@ -73,6 +74,8 @@ public class PlayMusicFragment extends Fragment {
     private int repeatMode = 0; // 0: no repeat, 1: repeat all, 2: repeat one
 
     private List<Song> originalSongList = new ArrayList<>();
+
+    private FirebaseService firebaseService;
 
     private final BroadcastReceiver musicReceiver = new BroadcastReceiver() {
         @Override
@@ -126,6 +129,7 @@ public class PlayMusicFragment extends Fragment {
         }
         broadcaster = LocalBroadcastManager.getInstance(requireContext());
         loadingDialog = new LoadingDialog(requireContext());
+        firebaseService = FirebaseService.getInstance();
         registerReceiver();
     }
 
@@ -325,7 +329,24 @@ public class PlayMusicFragment extends Fragment {
 
     private void updateUI(Song song) {
         tvTitle.setText(song.getTitle());
-        tvArtist.setText(song.getArtistId());
+        
+        // Get artist name from Firebase
+        String artistId = song.getArtistId();
+        if (artistId != null && !artistId.isEmpty()) {
+            firebaseService.getArtistNameById(artistId, new FirebaseService.FirestoreCallback<String>() {
+                @Override
+                public void onSuccess(String artistName) {
+                    tvArtist.setText(artistName);
+                }
+
+                @Override
+                public void onError(Exception e) {
+                    tvArtist.setText("Unknown Artist");
+                }
+            });
+        } else {
+            tvArtist.setText("Unknown Artist");
+        }
 
         Glide.with(this)
                 .load(song.getCoverUrl())
@@ -356,21 +377,23 @@ public class PlayMusicFragment extends Fragment {
         broadcaster.registerReceiver(musicReceiver, filter);
     }
 
-    private void updatePlaylistState(List<Song> newSongList, int newIndex, boolean shuffleState) {
-        currentIndex = newIndex;
-        isShuffleOn = shuffleState;
+    private void updatePlaylistState(List<Song> newSongList, int newIndex, boolean isShuffleOn) {
+        // Cập nhật UI cho bài hát hiện tại nếu cần
         btnShuffle.setSelected(isShuffleOn);
-        updateCurrentSong(currentIndex);
+        if (currentIndex != newIndex) {
+            currentIndex = newIndex;
+            Song currentSong = newSongList.get(newIndex);
+            updateUI(currentSong);
+        }
     }
 
     private void toggleShuffle() {
         isShuffleOn = !isShuffleOn;
         btnShuffle.setSelected(isShuffleOn);
-
-        // Gửi yêu cầu toggle shuffle đến Service
+        System.out.println(isShuffleOn);
         Intent intent = new Intent(requireContext(), MusicService.class);
         intent.setAction(MusicService.ACTION_TOGGLE_SHUFFLE);
-        intent.putExtra("isShuffleOn", isShuffleOn);
+        intent.putExtra("isShuffleOn", isShuffleOn); // Đảo ngược trạng thái hiện tại
         requireContext().startService(intent);
     }
 

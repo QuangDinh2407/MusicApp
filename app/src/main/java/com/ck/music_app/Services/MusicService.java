@@ -16,6 +16,8 @@ import androidx.annotation.Nullable;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.ck.music_app.Model.Song;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -43,7 +45,7 @@ public class MusicService extends Service {
 
     private MediaPlayer mediaPlayer;
     private static List<Song> songList = new ArrayList<>();
-    private int currentIndex = 0;
+    private static int currentIndex = 0;
     private boolean isPlaying = false;
     private LocalBroadcastManager broadcaster;
     private Handler lyricHandler;
@@ -54,9 +56,12 @@ public class MusicService extends Service {
     private int repeatMode = 0; // 0: no repeat, 1: repeat all, 2: repeat one
     private List<Song> originalSongList = new ArrayList<>(); // Lưu danh sách gốc
 
+    private static MusicService instance;
+
     @Override
     public void onCreate() {
         super.onCreate();
+        instance = this;
         broadcaster = LocalBroadcastManager.getInstance(this);
         initializeMediaPlayer();
         lyricHandler = new Handler(Looper.getMainLooper());
@@ -88,8 +93,27 @@ public class MusicService extends Service {
             switch (intent.getAction()) {
                 case ACTION_PLAY:
                     if (intent.hasExtra("songList") && intent.hasExtra("position")) {
-                        songList = (List<Song>) intent.getSerializableExtra("songList");
-                        currentIndex = intent.getIntExtra("position", 0);
+                        List<Song> newSongList = (List<Song>) intent.getSerializableExtra("songList");
+                        int position = intent.getIntExtra("position", 0);
+                        
+                        // Lưu danh sách gốc mới
+                        originalSongList = new ArrayList<>(newSongList);
+                        
+                        // Nếu đang bật shuffle, shuffle danh sách mới ngay lập tức
+                        if (isShuffleOn) {
+                            songList = new ArrayList<>();
+                            // Đặt bài hát được chọn lên đầu
+                            songList.add(newSongList.get(position));
+                            // Shuffle phần còn lại
+                            List<Song> remainingSongs = new ArrayList<>(newSongList);
+                            remainingSongs.remove(position);
+                            Collections.shuffle(remainingSongs);
+                            songList.addAll(remainingSongs);
+                            currentIndex = 0; // Vì bài hát được chọn luôn ở vị trí đầu
+                        } else {
+                            songList = new ArrayList<>(newSongList);
+                            currentIndex = position;
+                        }
                         playSong(currentIndex);
                     } else {
                         resumeMusic();
@@ -138,6 +162,9 @@ public class MusicService extends Service {
             broadcastLoadingState(true);
             broadcastSongChanged(currentIndex);
 
+            // Cập nhật songPlaying lên Firebase (chỉ với bài hát online)
+            FirebaseService.getInstance().updateCurrentPlayingSong(song);
+
             try {
                 // Kiểm tra xem URL có phải là local URI không
                 if (song.getAudioUrl().startsWith("content://")) {
@@ -179,21 +206,39 @@ public class MusicService extends Service {
     }
 
     private void resumeMusic() {
-        if (mediaPlayer != null && !mediaPlayer.isPlaying()) {
-            mediaPlayer.start();
-            isPlaying = true;
-            startProgressUpdates();
-            startLyricUpdates();
-            broadcastPlayingState(true);
+        if (mediaPlayer != null) {
+            try {
+                mediaPlayer.start();
+                isPlaying = true;
+                startProgressUpdates();
+                startLyricUpdates();
+                broadcastPlayingState(true);
+                System.out.println("Music resumed successfully");
+            } catch (IllegalStateException e) {
+                e.printStackTrace();
+                // Thử phát lại từ đầu nếu không thể resume
+                if (!songList.isEmpty()) {
+                    playSong(currentIndex);
+                }
+            }
+        } else {
+            // Thử khởi tạo lại MediaPlayer nếu nó là null
+            if (!songList.isEmpty()) {
+                playSong(currentIndex);
+            }
         }
     }
 
     private void pauseMusic() {
-        if (mediaPlayer != null && mediaPlayer.isPlaying()) {
-            mediaPlayer.pause();
-            isPlaying = false;
-            stopLyricUpdates();
-            broadcastPlayingState(false);
+        if (mediaPlayer != null) {
+            try {
+                mediaPlayer.pause();
+                isPlaying = false;
+                stopLyricUpdates();
+                broadcastPlayingState(false);
+            } catch (IllegalStateException e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -259,67 +304,53 @@ public class MusicService extends Service {
         }
     }
 
-    private void handleShuffleMode(boolean isShuffleOn) {
-        this.isShuffleOn = isShuffleOn;
-        
-        Song currentSong = songList.get(currentIndex);
-        
-        if (isShuffleOn) {
-            // Lưu danh sách gốc nếu chưa có
-            if (originalSongList.isEmpty()) {
-                originalSongList = new ArrayList<>(songList);
+    private void handleShuffleMode(boolean shuffleOn) {
+        if (shuffleOn != isShuffleOn) {
+            isShuffleOn = shuffleOn;
+            if (isShuffleOn) {
+                // Lấy bài hát hiện tại
+                Song currentSong = songList.get(currentIndex);
+                
+                // Tạo danh sách shuffle mới
+                songList = new ArrayList<>();
+                songList.add(currentSong); // Đặt bài hát hiện tại lên đầu
+                
+                // Shuffle phần còn lại của danh sách
+                List<Song> remainingSongs = new ArrayList<>(originalSongList);
+                remainingSongs.remove(originalSongList.indexOf(currentSong));
+                Collections.shuffle(remainingSongs);
+                songList.addAll(remainingSongs);
+                
+                currentIndex = 0; // Vì bài hát hiện tại luôn ở vị trí đầu
+            } else {
+                // Khôi phục lại danh sách gốc
+                if (!originalSongList.isEmpty()) {
+                    // Lấy bài hát hiện tại
+                    Song currentSong = songList.get(currentIndex);
+                    // Tìm vị trí của bài hát trong danh sách gốc
+                    int originalIndex = -1;
+                    for (int i = 0; i < originalSongList.size(); i++) {
+                        if (originalSongList.get(i).getSongId().equals(currentSong.getSongId())) {
+                            originalIndex = i;
+                            break;
+                        }
+                    }
+                    // Nếu không tìm thấy, giữ nguyên vị trí hiện tại
+                    if (originalIndex == -1) {
+                        originalIndex = Math.min(currentIndex, originalSongList.size() - 1);
+                    }
+                    songList = new ArrayList<>(originalSongList);
+                    currentIndex = originalIndex;
+                }
             }
-            
-            // Tạo và xáo trộn danh sách mới
-            List<Song> shuffledList = new ArrayList<>(songList);
-            Collections.shuffle(shuffledList);
-            
-            // Đảm bảo bài hát hiện tại vẫn ở vị trí currentIndex
-            shuffledList.remove(currentSong);
-            shuffledList.add(currentIndex, currentSong);
-            
-            // Cập nhật danh sách phát
-            songList = shuffledList;
-        } else {
-            // Khôi phục lại danh sách gốc
-            if (!originalSongList.isEmpty()) {
-                songList = new ArrayList<>(originalSongList);
-                // Tìm vị trí mới của bài hát hiện tại trong danh sách gốc
-                currentIndex = songList.indexOf(currentSong);
-            }
+            broadcastPlaylistChanged();
         }
-
-        // Broadcast playlist changed
-        broadcastPlaylistChanged();
-
     }
 
-    private void handleRepeatMode(int repeatMode) {
-        this.repeatMode = repeatMode;
-
-        // Cập nhật MediaPlayer completion listener dựa trên chế độ lặp lại
-        mediaPlayer.setOnCompletionListener(mp -> {
-            switch (repeatMode) {
-                case 0: // Không lặp lại
-                    if (currentIndex < songList.size() - 1) {
-                        playNext();
-                    } else {
-                        // Dừng phát nhạc khi hết danh sách
-                        pauseMusic();
-                        seekTo(0);
-                    }
-                    break;
-
-                case 1: // Lặp lại tất cả
-                    playNext();
-                    break;
-
-                case 2: // Lặp lại một bài
-                    // Phát lại bài hiện tại
-                    playSong(currentIndex);
-                    break;
-            }
-        });
+    private void handleRepeatMode(int newRepeatMode) {
+        if (newRepeatMode >= 0 && newRepeatMode <= 2) {
+            repeatMode = newRepeatMode;
+        }
     }
 
     private void startProgressUpdates() {
@@ -414,19 +445,12 @@ public class MusicService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
+        instance = null;
         if (mediaPlayer != null) {
-            stopLyricUpdates();
-            try {
-                if (mediaPlayer.isPlaying()) {
-                    mediaPlayer.stop();
-                }
-                mediaPlayer.release();
-            } catch (Exception e) {
-                Log.e(TAG, "Error releasing MediaPlayer: " + e.getMessage());
-            }
+            mediaPlayer.release();
             mediaPlayer = null;
         }
-        isPlaying = false;
+        stopLyricUpdates();
     }
 
     public static Song getCurrentSong() {
@@ -437,11 +461,22 @@ public class MusicService extends Service {
         return songList;
     }
 
-    public  int getCurrentIndex() {
+    public static int getCurrentIndex() {
         return currentIndex;
     }
 
     public  boolean isShuffleEnabled() {
         return isShuffleOn;
+    }
+
+    public static boolean isPlaying() {
+        return instance != null && instance.mediaPlayer != null && instance.mediaPlayer.isPlaying();
+    }
+
+    public static int getCurrentPosition() {
+        if (instance != null && instance.mediaPlayer != null) {
+            return instance.mediaPlayer.getCurrentPosition();
+        }
+        return 0;
     }
 } 

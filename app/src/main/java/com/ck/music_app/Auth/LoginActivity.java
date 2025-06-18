@@ -3,7 +3,10 @@ package com.ck.music_app.Auth;
 import static android.content.ContentValues.TAG;
 
 import android.app.Dialog;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
@@ -20,9 +23,12 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.ck.music_app.MainActivity;
+import com.ck.music_app.Model.Song;
 import com.ck.music_app.R;
+import com.ck.music_app.utils.LoginUtils;
 import com.facebook.CallbackManager;
 import com.facebook.FacebookCallback;
 import com.facebook.login.LoginResult;
@@ -48,6 +54,9 @@ import com.google.firebase.auth.FacebookAuthProvider;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+import com.ck.music_app.Services.InternetService;
+import com.ck.music_app.Services.FirebaseService;
+
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -70,22 +79,52 @@ public class LoginActivity extends AppCompatActivity {
     private static final String KEY_REMEMBER = "remember";
     private static final String KEY_EMAIL = "email";
     private static final String KEY_PASSWORD = "password";
+    private static final String KEY_LOGIN_METHOD = "login_method";
+    private static final String LOGIN_METHOD_EMAIL = "email";
+    private static final String LOGIN_METHOD_GOOGLE = "google";
+    private static final String LOGIN_METHOD_FACEBOOK = "facebook";
 
     private Dialog loadingDialog;
+
+    private LocalBroadcastManager broadcaster;
+    private boolean isConnected = false;
+
+    private final BroadcastReceiver internetReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent.getAction().equals(InternetService.BROADCAST_INTERNET_STATE)) {
+                boolean newConnectionState = intent.getBooleanExtra("isConnected", false);
+                if (newConnectionState != isConnected) {
+                    isConnected = newConnectionState;
+                    showInternetStatus(isConnected);
+                }
+            }
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        EdgeToEdge.enable(this);
         setContentView(R.layout.activity_login);
         init();
         initLoadingDialog();
-        checkRememberMe();
-        EdgeToEdge.enable(this);
+        
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.login), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+
+        // Khởi tạo LocalBroadcastManager
+        broadcaster = LocalBroadcastManager.getInstance(this);
+        
+        // Khởi động InternetService
+        startService(new Intent(this, InternetService.class));
+        
+        // Kiểm tra trạng thái internet ban đầu
+        isConnected = InternetService.isInternetAvailable(this);
+        showInternetStatus(isConnected);
     }
 
     private void init() {
@@ -169,31 +208,53 @@ public class LoginActivity extends AppCompatActivity {
     private void checkRememberMe() {
         boolean isRemembered = sharedPreferences.getBoolean(KEY_REMEMBER, false);
         if (isRemembered) {
-            String savedEmail = sharedPreferences.getString(KEY_EMAIL, "");
-            String savedPassword = sharedPreferences.getString(KEY_PASSWORD, "");
+            String loginMethod = sharedPreferences.getString(KEY_LOGIN_METHOD, "");
+            String methodMessage = "";
             
-            if (!savedEmail.isEmpty() && !savedPassword.isEmpty()) {
-                showLoading();
-                auth.signInWithEmailAndPassword(savedEmail, savedPassword)
-                    .addOnCompleteListener(this, task -> {
-                        hideLoading();
-                        if (task.isSuccessful()) {
-                            FirebaseUser user = auth.getCurrentUser();
-                            createUserIfNotExists(user);
-                            Intent intent = new Intent(LoginActivity.this, MainActivity.class);
-                            intent.putExtra("email", savedEmail);
-                            startActivity(intent);
-                            finish();
-                        } else {
-                            SharedPreferences.Editor editor = sharedPreferences.edit();
-                            editor.clear();
-                            editor.apply();
-                            
-                            Toast.makeText(LoginActivity.this, 
-                                "Đăng nhập tự động thất bại. Vui lòng đăng nhập lại.", 
-                                Toast.LENGTH_LONG).show();
-                        }
-                    });
+            switch (loginMethod) {
+                case LOGIN_METHOD_EMAIL:
+                    methodMessage = "Đang đăng nhập tự động bằng Email...";
+                    String savedEmail = sharedPreferences.getString(KEY_EMAIL, "");
+                    String savedPassword = sharedPreferences.getString(KEY_PASSWORD, "");
+                    
+                    if (!savedEmail.isEmpty() && !savedPassword.isEmpty()) {
+                        Toast.makeText(LoginActivity.this, methodMessage, Toast.LENGTH_SHORT).show();
+                        showLoading();
+                        auth.signInWithEmailAndPassword(savedEmail, savedPassword)
+                            .addOnCompleteListener(this, task -> {
+                                hideLoading();
+                                if (task.isSuccessful()) {
+                                    FirebaseUser user = auth.getCurrentUser();
+                                    createUserIfNotExists(user);
+                                    handleLoginSuccess(user, savedEmail);
+
+                                } else {
+                                    clearLoginInfo();
+                                    Toast.makeText(LoginActivity.this, 
+                                        "Đăng nhập tự động thất bại. Vui lòng đăng nhập lại.", 
+                                        Toast.LENGTH_LONG).show();
+                                }
+                            });
+                    }
+                    break;
+                    
+                case LOGIN_METHOD_GOOGLE:
+                    methodMessage = "Đang đăng nhập tự động bằng Google...";
+                    GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
+                    if (account != null) {
+                        Toast.makeText(LoginActivity.this, methodMessage, Toast.LENGTH_SHORT).show();
+                        firebaseAuthWithGoogle(account.getIdToken());
+                    }
+                    break;
+                    
+                case LOGIN_METHOD_FACEBOOK:
+                    methodMessage = "Đang đăng nhập tự động bằng Facebook...";
+                    AccessToken accessToken = AccessToken.getCurrentAccessToken();
+                    if (accessToken != null && !accessToken.isExpired()) {
+                        Toast.makeText(LoginActivity.this, methodMessage, Toast.LENGTH_SHORT).show();
+                        handleFacebookAccessToken(accessToken);
+                    }
+                    break;
             }
         }
     }
@@ -202,29 +263,50 @@ public class LoginActivity extends AppCompatActivity {
         SharedPreferences.Editor editor = sharedPreferences.edit();
         if (remember) {
             editor.putBoolean(KEY_REMEMBER, true);
+            editor.putString(KEY_LOGIN_METHOD, LOGIN_METHOD_EMAIL);
             editor.putString(KEY_EMAIL, email);
             editor.putString(KEY_PASSWORD, password);
         } else {
-            editor.clear();
+            clearLoginInfo();
         }
         editor.apply();
     }
 
+    private void saveGoogleLoginInfo() {
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putBoolean(KEY_REMEMBER, true);
+        editor.putString(KEY_LOGIN_METHOD, LOGIN_METHOD_GOOGLE);
+        editor.apply();
+    }
+
+    private void saveFacebookLoginInfo() {
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putBoolean(KEY_REMEMBER, true);
+        editor.putString(KEY_LOGIN_METHOD, LOGIN_METHOD_FACEBOOK);
+        editor.apply();
+    }
+
+    private void clearLoginInfo() {
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.clear();
+        editor.apply();
+    }
+
     public void loginWithEmailPassword(String email, String password){
+        System.out.println("Attempting to login with email: " + email);
         showLoading();
         auth.signInWithEmailAndPassword(email, password).addOnCompleteListener(LoginActivity.this, new OnCompleteListener<AuthResult>() {
             @Override
             public void onComplete(@NonNull Task<AuthResult> task) {
                 hideLoading();
                 if (task.isSuccessful()) {
+                    System.out.println("Email login successful");
                     saveLoginInfo(email, password, rememberMeCheckBox.isChecked());
                     FirebaseUser user = auth.getCurrentUser();
                     createUserIfNotExists(user);
-                    Intent intent = new Intent(LoginActivity.this, MainActivity.class);
-                    intent.putExtra("email", email);
-                    startActivity(intent);
-                    finish();
+                    handleLoginSuccess(user, email);
                 } else {
+                    System.out.println("Email login failed: " + task.getException().getMessage());
                     Toast.makeText(LoginActivity.this, "Đăng nhập không thành công", Toast.LENGTH_SHORT).show();
                 }
             }
@@ -263,28 +345,20 @@ public class LoginActivity extends AppCompatActivity {
                 .addOnCompleteListener(this, task -> {
                     hideLoading();
                     if (task.isSuccessful()) {
+                        saveGoogleLoginInfo();
                         FirebaseUser user = auth.getCurrentUser();
                         createUserIfNotExists(user);
-                        String email = user != null ? user.getEmail() : "";
-                        Intent intent = new Intent(LoginActivity.this, MainActivity.class);
-                        intent.putExtra("email", email);
-                        startActivity(intent);
-                        finish();
+                        handleLoginSuccess(user, user != null ? user.getEmail() : "");
                     } else {
                         Exception e = task.getException();
                         if (e instanceof com.google.firebase.auth.FirebaseAuthUserCollisionException) {
-                            // Đã có tài khoản với email này, thử liên kết
                             FirebaseUser user = auth.getCurrentUser();
                             if (user != null) {
                                 user.linkWithCredential(credential)
                                         .addOnCompleteListener(this, linkTask -> {
                                             if (linkTask.isSuccessful()) {
                                                 createUserIfNotExists(user);
-                                                String email = user.getEmail();
-                                                Intent intent = new Intent(LoginActivity.this, MainActivity.class);
-                                                intent.putExtra("email", email);
-                                                startActivity(intent);
-                                                finish();
+                                                handleLoginSuccess(user, user.getEmail());
                                             } else {
                                                 Toast.makeText(this, "Liên kết Google thất bại: " + linkTask.getException().getMessage(), Toast.LENGTH_SHORT).show();
                                             }
@@ -322,48 +396,55 @@ public class LoginActivity extends AppCompatActivity {
 
     private void handleFacebookAccessToken(AccessToken token) {
         showLoading();
-        AuthCredential credential = FacebookAuthProvider.getCredential(token.getToken());
-        auth.signInWithCredential(credential)
-                .addOnCompleteListener(this, task -> {
-                    hideLoading();
-                    if (task.isSuccessful()) {
-                        FirebaseUser user = auth.getCurrentUser();
-                        createUserIfNotExists(user);
-                        String email = user != null ? user.getEmail() : "";
-                        Intent intent = new Intent(LoginActivity.this, MainActivity.class);
-                        intent.putExtra("email", email);
-                        startActivity(intent);
-                        finish();
-                    } else {
-                        Exception e = task.getException();
-                        if (e instanceof FirebaseAuthUserCollisionException) {
-                            // Đã có tài khoản với email này, thử liên kết
-                            FirebaseUser user = auth.getCurrentUser();
-                            if (user != null) {
-                                user.linkWithCredential(credential)
-                                        .addOnCompleteListener(this, linkTask -> {
-                                            if (linkTask.isSuccessful()) {
-                                                createUserIfNotExists(user);
-                                                String email = user.getEmail();
-                                                Intent intent = new Intent(LoginActivity.this, MainActivity.class);
-                                                intent.putExtra("email", email);
-                                                startActivity(intent);
-                                                finish();
-                                            } else {
-                                                Toast.makeText(this, "Liên kết Facebook thất bại: " + linkTask.getException().getMessage(), Toast.LENGTH_SHORT).show();
-                                            }
-                                        });
-                            } else {
-                                Toast.makeText(this, "Vui lòng đăng nhập bằng Google trước để liên kết Facebook.", Toast.LENGTH_LONG).show();
+        
+        // Lấy thông tin profile từ Facebook
+        com.facebook.GraphRequest request = com.facebook.GraphRequest.newMeRequest(
+            token,
+            (object, response) -> {
+                try {
+                    String facebookName = object.getString("name");
+                    String facebookEmail = object.getString("email");
+                    String facebookId = object.getString("id");
+                    String profilePicUrl = "https://graph.facebook.com/" + facebookId + "/picture?type=large";
+                    
+                    // Sử dụng FirebaseService để đăng nhập
+                    FirebaseService.getInstance().loginWithFacebook(
+                        token.getToken(),
+                        facebookName,
+                        facebookEmail,
+                        profilePicUrl,
+                        new FirebaseService.OnAuthCallback() {
+                            @Override
+                            public void onSuccess(FirebaseUser user) {
+                                hideLoading();
+                                saveFacebookLoginInfo();
+                                handleLoginSuccess(user, facebookEmail);
                             }
-                        } else {
-                            Toast.makeText(this, "Đăng nhập Facebook không thành công: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+
+                            @Override
+                            public void onError(String errorMessage) {
+                                hideLoading();
+                                Toast.makeText(LoginActivity.this, errorMessage, Toast.LENGTH_SHORT).show();
+                            }
                         }
-                    }
-                });
+                    );
+                } catch (Exception e) {
+                    hideLoading();
+                    Toast.makeText(LoginActivity.this, "Không thể lấy thông tin từ Facebook: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+            });
+        
+        Bundle parameters = new Bundle();
+        parameters.putString("fields", "id,name,email");
+        request.setParameters(parameters);
+        request.executeAsync();
     }
 
     private void createUserIfNotExists(FirebaseUser user) {
+        createUserIfNotExists(user, null, null, null);
+    }
+
+    private void createUserIfNotExists(FirebaseUser user, String fbName, String fbEmail, String fbProfilePicUrl) {
         if (user == null) return;
         FirebaseFirestore db = FirebaseFirestore.getInstance();
         String uid = user.getUid();
@@ -371,11 +452,87 @@ public class LoginActivity extends AppCompatActivity {
             if (!documentSnapshot.exists()) {
                 Map<String, Object> userMap = new HashMap<>();
                 userMap.put("DateOfBirth", "");
-                userMap.put("Email", user.getEmail() != null ? user.getEmail() : "");
-                userMap.put("Name", user.getDisplayName() != null ? user.getDisplayName() : "");
+                
+                // Ưu tiên email từ Facebook nếu có
+                String email = fbEmail != null ? fbEmail : (user.getEmail() != null ? user.getEmail() : "");
+                userMap.put("Email", email);
+                
+                // Ưu tiên tên từ Facebook nếu có
+                String name = fbName != null ? fbName : (user.getDisplayName() != null ? user.getDisplayName() : "");
+                userMap.put("Name", name);
+                
+                // Thêm URL ảnh đại diện từ Facebook
+                if (fbProfilePicUrl != null) {
+                    userMap.put("ProfilePicture", fbProfilePicUrl);
+                }
+                
                 userMap.put("songPlaying", "");
                 db.collection("users").document(uid).set(userMap);
             }
         });
+    }
+
+    private void showInternetStatus(boolean isConnected) {
+        if (!isConnected) {
+            Toast.makeText(LoginActivity.this, 
+                "Không có kết nối internet - Chuyển sang chế độ offline", 
+                Toast.LENGTH_SHORT).show();
+                
+            Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+            intent.putExtra("openDownloadFragment", true);
+            startActivity(intent);
+            finish();
+        } else {
+            // Kiểm tra thông tin đăng nhập đã lưu
+            checkRememberMe();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Đăng ký nhận broadcast
+        IntentFilter filter = new IntentFilter(InternetService.BROADCAST_INTERNET_STATE);
+        broadcaster.registerReceiver(internetReceiver, filter);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // Hủy đăng ký broadcast
+        broadcaster.unregisterReceiver(internetReceiver);
+    }
+
+    private void checkUserCurrentSong(FirebaseUser user) {
+        if (user == null) return;
+        
+        System.out.println("Checking current song for user: " + user.getUid());
+        
+        FirebaseService.getInstance().getUserCurrentSong(user.getUid(), new FirebaseService.FirestoreCallback<Song>() {
+            @Override
+            public void onSuccess(Song song) {
+
+                // Gửi thông tin bài hát qua Intent
+                Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                intent.putExtra("email", user.getEmail());
+                intent.putExtra("current_song", song);
+                intent.putExtra("load_song_from_login", true);
+                startActivity(intent);
+                finish();
+            }
+
+            @Override
+            public void onError(Exception e) {
+                // Nếu không có bài hát hoặc có lỗi, chỉ chuyển email
+                Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                intent.putExtra("email", user.getEmail());
+                startActivity(intent);
+                finish();
+            }
+        });
+    }
+
+    private void handleLoginSuccess(FirebaseUser user, String email) {
+        LoginUtils.handleLoginSuccess(this, user, email);
     }
 }

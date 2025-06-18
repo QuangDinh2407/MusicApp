@@ -49,7 +49,8 @@ public class HomeFragment extends Fragment {
                     AlbumSongsFragment albumSongsFragment = AlbumSongsFragment.newInstance(
                         songs,
                         album.getTitle(),
-                        album.getCoverUrl()
+                        album.getCoverUrl(),
+                        artist.getName()
                     );
 
                     // Thêm callback để xử lý khi fragment bị remove

@@ -116,7 +116,7 @@
                     android:id="@+id/tvMiniTitle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:textColor="@color/textPrimary"
+                    android:textColor="@color/textPrimarySameBackground"
                     android:textSize="14sp"
                     android:singleLine="true"
                     android:ellipsize="end"/>
@@ -125,7 +125,7 @@
                     android:id="@+id/tvMiniArtist"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:textColor="@color/textPrimary"
+                    android:textColor="@color/textPrimarySameBackground"
                     android:textSize="12sp"
                     android:singleLine="true"
                     android:ellipsize="end"/>

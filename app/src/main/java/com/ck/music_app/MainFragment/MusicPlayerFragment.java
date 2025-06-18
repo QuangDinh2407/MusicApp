@@ -36,6 +36,7 @@ import com.ck.music_app.MainFragment.MusicPlayerChildFragment.LyricFragment;
 import com.ck.music_app.MainFragment.MusicPlayerChildFragment.PlayMusicFragment;
 import com.ck.music_app.Model.Song;
 import com.ck.music_app.R;
+import com.ck.music_app.Services.FirebaseService;
 import com.ck.music_app.Services.MusicService;
 import com.ck.music_app.Viewpager.MusicPlayerPagerAdapter;
 import com.ck.music_app.utils.GradientUtils;
@@ -52,6 +53,10 @@ import android.content.pm.PackageManager;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import android.os.Build;
+
+import androidx.appcompat.widget.Toolbar;
+import com.google.android.material.appbar.AppBarLayout;
+import com.google.android.material.appbar.CollapsingToolbarLayout;
 
 public class MusicPlayerFragment extends Fragment {
     private View rootLayout;
@@ -91,6 +96,8 @@ public class MusicPlayerFragment extends Fragment {
     private LyricFragment lyricFragment;
     private boolean isPlayerVisible = false;
 
+    private FirebaseService firebaseService;
+
     private final BroadcastReceiver musicReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -100,23 +107,32 @@ public class MusicPlayerFragment extends Fragment {
                     updatePlayingState(playing);
                     break;
                 case MusicService.BROADCAST_SONG_CHANGED:
-                    int position = intent.getIntExtra("position", 0);
-                    updateCurrentSong(position);
+                    updateCurrentSong();
                     break;
                 case MusicService.BROADCAST_LOADING_STATE:
                     boolean isLoading = intent.getBooleanExtra("isLoading", false);
                     updateLoadingState(isLoading);
                     break;
+                case MusicService.BROADCAST_PLAYLIST_CHANGED:
+                    updatePlaylistState(
+                        (List<Song>) intent.getSerializableExtra("songList"),
+                        intent.getIntExtra("currentIndex", 0),
+                        intent.getBooleanExtra("isShuffleOn", false)
+                    );
+                    break;
             }
         }
     };
 
-    public static MusicPlayerFragment newInstance(List<Song> songs, int currentIndex, String albumName) {
+    private boolean shouldMinimizeOnCreate = false;
+
+    public static MusicPlayerFragment newInstance(List<Song> songs, int currentIndex, String albumName, boolean shouldMinimize) {
         MusicPlayerFragment fragment = new MusicPlayerFragment();
         Bundle args = new Bundle();
         args.putSerializable("songList", new ArrayList<>(songs));
         args.putInt("currentIndex", currentIndex);
         args.putString("albumName", albumName);
+        args.putBoolean("shouldMinimize", shouldMinimize);
         fragment.setArguments(args);
         return fragment;
     }
@@ -128,10 +144,19 @@ public class MusicPlayerFragment extends Fragment {
             songList = (List<Song>) getArguments().getSerializable("songList");
             currentIndex = getArguments().getInt("currentIndex", 0);
             albumName = getArguments().getString("albumName", "Unknown Album");
+            shouldMinimizeOnCreate = getArguments().getBoolean("shouldMinimize", false);
         }
         broadcaster = LocalBroadcastManager.getInstance(requireContext());
         loadingDialog = new LoadingDialog(requireContext());
+        firebaseService = FirebaseService.getInstance();
         registerReceiver();
+
+        // Gửi danh sách phát mới đến Service ngay khi tạo fragment
+        Intent intent = new Intent(requireContext(), MusicService.class);
+        intent.setAction(MusicService.ACTION_PLAY);
+        intent.putExtra("songList", new ArrayList<>(songList));
+        intent.putExtra("position", currentIndex);
+        requireContext().startService(intent);
     }
 
     @Nullable
@@ -161,10 +186,19 @@ public class MusicPlayerFragment extends Fragment {
             }
         });
 
-        updateMiniPlayer(songList.get(currentIndex));
+        // Lấy bài hát hiện tại từ service để cập nhật UI
+        Song currentSong = MusicService.getCurrentSong();
+        if (currentSong != null) {
+            updateMiniPlayer(currentSong);
+        }
 
         // Khởi tạo view download
         initializeDownloadView(view);
+        
+        // Nếu cần minimize khi tạo
+        if (shouldMinimizeOnCreate) {
+            view.post(() -> minimize());
+        }
         
         return view;
     }
@@ -351,7 +385,23 @@ public class MusicPlayerFragment extends Fragment {
 
     private void updateMiniPlayer(Song song) {
         tvMiniTitle.setText(song.getTitle());
-        tvMiniArtist.setText(song.getArtistId());
+        // Get artist name from Firebase
+        String artistId = song.getArtistId();
+        if (artistId != null && !artistId.isEmpty()) {
+            firebaseService.getArtistNameById(artistId, new FirebaseService.FirestoreCallback<>() {
+                @Override
+                public void onSuccess(String artistName) {
+                    tvMiniArtist.setText(artistName);
+                }
+
+                @Override
+                public void onError(Exception e) {
+                    tvMiniArtist.setText("Unknown Artist");
+                }
+            });
+        } else {
+            tvMiniArtist.setText("Unknown Artist");
+        }
 
         Glide.with(this)
                 .load(song.getCoverUrl())
@@ -374,10 +424,11 @@ public class MusicPlayerFragment extends Fragment {
                 });
     }
 
-    private void updateCurrentSong(int position) {
-        currentIndex = position;
-        Song song = songList.get(position);
-        updateMiniPlayer(song);
+    private void updateCurrentSong() {
+        Song currentSong = MusicService.getCurrentSong();
+        if (currentSong != null) {
+            updateMiniPlayer(currentSong);
+        }
     }
 
     private void updatePlayingState(boolean playing) {
@@ -443,6 +494,7 @@ public class MusicPlayerFragment extends Fragment {
         filter.addAction(MusicService.BROADCAST_PLAYING_STATE);
         filter.addAction(MusicService.BROADCAST_SONG_CHANGED);
         filter.addAction(MusicService.BROADCAST_LOADING_STATE);
+        filter.addAction(MusicService.BROADCAST_PLAYLIST_CHANGED);
         broadcaster.registerReceiver(musicReceiver, filter);
     }
 
@@ -470,19 +522,11 @@ public class MusicPlayerFragment extends Fragment {
     }
 
     public void updatePlayerInfo(List<Song> newSongList, int newIndex) {
-        // Cập nhật danh sách và vị trí bài hát
-        this.songList = new ArrayList<>(newSongList);
-        this.currentIndex = newIndex;
-
-        // Cập nhật giao diện mini player
-        Song song = songList.get(currentIndex);
-        updateMiniPlayer(song);
-
-        // Gửi danh sách mới đến Service
+        // Chỉ gửi danh sách mới cho service, để service tự quyết định xử lý
         Intent intent = new Intent(requireContext(), MusicService.class);
         intent.setAction(MusicService.ACTION_PLAY);
-        intent.putExtra("songList", new ArrayList<>(songList));
-        intent.putExtra("position", currentIndex);
+        intent.putExtra("songList", new ArrayList<>(newSongList));
+        intent.putExtra("position", newIndex);
         requireContext().startService(intent);
     }
 
@@ -624,8 +668,6 @@ public class MusicPlayerFragment extends Fragment {
 
     public void showPlayer(List<Song> songList, int currentIndex, String albumName) {
         this.albumName = albumName;
-        this.songList = new ArrayList<>(songList);
-        this.currentIndex = currentIndex;
         
         // Gửi danh sách phát mới đến Service
         Intent intent = new Intent(requireContext(), MusicService.class);
@@ -634,12 +676,19 @@ public class MusicPlayerFragment extends Fragment {
         intent.putExtra("position", currentIndex);
         requireContext().startService(intent);
 
-        // Cập nhật giao diện mini player
-        updateMiniPlayer(songList.get(currentIndex));
-        
         // Cập nhật tên album
         if (tvAlbumName != null) {
             tvAlbumName.setText(albumName);
+        }
+    }
+
+    private void updatePlaylistState(List<Song> newSongList, int newIndex, boolean isShuffleOn) {
+        songList = new ArrayList<>(newSongList);
+        currentIndex = newIndex;
+        // Cập nhật UI cho bài hát hiện tại nếu cần
+        Song currentSong = MusicService.getCurrentSong();
+        if (currentSong != null) {
+            updateMiniPlayer(currentSong);
         }
     }
 } 

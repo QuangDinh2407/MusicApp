@@ -4,11 +4,14 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
+import com.ck.music_app.Auth.LoginActivity;
 import com.ck.music_app.MainFragment.MusicPlayerFragment;
 import com.ck.music_app.MainFragment.HomeFragment;
 import com.ck.music_app.MainFragment.LibraryFragment;
@@ -25,10 +28,14 @@ import androidx.fragment.app.Fragment;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.viewpager2.widget.ViewPager2;
 import com.ck.music_app.utils.FirestoreUtils;
+
+import java.util.ArrayList;
 import java.util.List;
 
-import com.google.firebase.firestore.FirebaseFirestore;
-import java.util.ArrayList;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.ck.music_app.Services.InternetService;
+import com.ck.music_app.utils.LoginUtils;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
@@ -40,8 +47,15 @@ public class MainActivity extends AppCompatActivity {
     private int currentSongIndex;
     private Song currentSong;
     private boolean isPlaying = false;
-    private FirebaseFirestore db;
+    private FirebaseAuth auth;
+    private SharedPreferences sharedPreferences;
+    private static final String PREF_NAME = "LoginPrefs";
+    private static final String KEY_REMEMBER = "remember";
+    private static final String KEY_EMAIL = "email";
+    private static final String KEY_PASSWORD = "password";
+    private boolean isOfflineMode = false;
     private View playerContainer;
+    private boolean isHandlingConnection = false;
 
     private final BroadcastReceiver playerReceiver = new BroadcastReceiver() {
         @Override
@@ -55,11 +69,33 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+    private final BroadcastReceiver internetReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent.getAction().equals(InternetService.BROADCAST_INTERNET_STATE)) {
+                boolean isConnected = intent.getBooleanExtra("isConnected", false);
+                handleInternetStateChange(isConnected);
+            }
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
+
+        // Khởi tạo Firebase Auth và SharedPreferences
+        auth = FirebaseAuth.getInstance();
+        sharedPreferences = getSharedPreferences(PREF_NAME, MODE_PRIVATE);
+        
+        // Khởi tạo views
+        viewPager = findViewById(R.id.view_pager);
+        bottomNavigationView = findViewById(R.id.bottom_navigation);
+        playerContainer = findViewById(R.id.player_container);
+        
+        // Kiểm tra xem có đang ở chế độ offline không
+        isOfflineMode = getIntent().getBooleanExtra("openDownloadFragment", false);
 
         // Khởi tạo các fragment chính
         fragments = new Fragment[]{
@@ -69,13 +105,23 @@ public class MainActivity extends AppCompatActivity {
                 new ProfileFragment()
         };
 
-        viewPager = findViewById(R.id.view_pager);
         MainPagerAdapter adapter = new MainPagerAdapter(this, fragments);
         viewPager.setAdapter(adapter);
-        viewPager.setCurrentItem(0, false);
 
-        bottomNavigationView = findViewById(R.id.bottom_navigation);
-        playerContainer = findViewById(R.id.player_container);
+        
+        // Đảm bảo adapter được set trước khi chuyển trang
+        viewPager.post(() -> {
+            // Kiểm tra xem có yêu cầu mở fragment download không
+            if (isOfflineMode) {
+                viewPager.setCurrentItem(3, false); // Chuyển đến Profile Fragment (index 3)
+                bottomNavigationView.setSelectedItemId(R.id.nav_profile); // Cập nhật bottom navigation
+                // Gửi broadcast để mở fragment download
+                Intent intent = new Intent("OPEN_DOWNLOAD_FRAGMENT");
+                LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+            } else {
+                viewPager.setCurrentItem(0, false);
+            }
+        });
 
         // Khi vuốt ViewPager2 thì đổi tab menu
         viewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
@@ -108,13 +154,18 @@ public class MainActivity extends AppCompatActivity {
         // Đăng ký broadcast receiver
         IntentFilter filter = new IntentFilter("SHOW_PLAYER");
         LocalBroadcastManager.getInstance(this).registerReceiver(playerReceiver, filter);
+
+        // Đăng ký broadcast receiver cho internet state
+        IntentFilter internetFilter = new IntentFilter(InternetService.BROADCAST_INTERNET_STATE);
+        LocalBroadcastManager.getInstance(this).registerReceiver(internetReceiver, internetFilter);
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        // Hủy đăng ký broadcast receiver
+        // Hủy đăng ký tất cả broadcast receivers
         LocalBroadcastManager.getInstance(this).unregisterReceiver(playerReceiver);
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(internetReceiver);
     }
 
     @Override
@@ -135,6 +186,8 @@ public class MainActivity extends AppCompatActivity {
             ArrayList<Song> songList = (ArrayList<Song>) intent.getSerializableExtra("songList");
             int position = intent.getIntExtra("position", 0);
             String albumName = intent.getStringExtra("albumName");
+            boolean resumePlayback = intent.getBooleanExtra("resume_playback", false);
+            int playbackPosition = intent.getIntExtra("playback_position", 0);
             
             // Phát nhạc
             Intent serviceIntent = new Intent(this, MusicService.class);
@@ -144,43 +197,66 @@ public class MainActivity extends AppCompatActivity {
             startService(serviceIntent);
 
             // Hiển thị player
-            showPlayer(songList, position, albumName);
+            showPlayer(songList, position, albumName, !resumePlayback);
+            
+            if (playbackPosition > 0) {
+                // Seek đến vị trí đang phát
+                new Handler().postDelayed(() -> {
+                    Intent seekIntent = new Intent(this, MusicService.class);
+                    seekIntent.setAction(MusicService.ACTION_SEEK);
+                    seekIntent.putExtra("position", playbackPosition);
+                    startService(seekIntent);
+                }, 500);
+            }
             
             // Xóa flag để tránh hiển thị lại player khi activity resume
             intent.removeExtra("showPlayer");
         }
     }
 
-    public void showPlayer(List<Song> songList, int position, String albumName) {
+    public void showPlayer(List<Song> songList, int position, String albumName, boolean shouldMinimize) {
         // Lưu trạng thái hiện tại
         currentPlaylist = new ArrayList<>(songList);
         currentSongIndex = position;
         currentSong = songList.get(position);
 
-        // Gửi intent đến Service để phát nhạc
-        Intent intent = new Intent(this, MusicService.class);
-        intent.setAction(MusicService.ACTION_PLAY);
-        intent.putExtra("songList", new ArrayList<>(songList));
-        intent.putExtra("position", position);
-        startService(intent);
-
         // Hiển thị player fragment
         if (musicplayerFragment == null) {
-            musicplayerFragment = MusicPlayerFragment.newInstance(currentPlaylist, currentSongIndex, albumName);
+            musicplayerFragment = MusicPlayerFragment.newInstance(currentPlaylist, currentSongIndex, albumName, shouldMinimize);
             getSupportFragmentManager().beginTransaction()
                     .replace(R.id.player_container, musicplayerFragment)
                     .commit();
             playerContainer.setVisibility(View.VISIBLE);
+
+            // Gửi intent đến Service để phát nhạc
+            Intent intent = new Intent(this, MusicService.class);
+            intent.setAction(MusicService.ACTION_PLAY);
+            intent.putExtra("songList", new ArrayList<>(songList));
+            intent.putExtra("position", position);
+            startService(intent);
+
+            if (shouldMinimize) {
+                // Đợi lâu hơn để đảm bảo MediaPlayer đã được khởi tạo và bắt đầu phát
+                new Handler().postDelayed(() -> {
+                    Intent pauseIntent = new Intent(this, MusicService.class);
+                    pauseIntent.setAction(MusicService.ACTION_PAUSE);
+                    startService(pauseIntent);
+                }, 2000); // Tăng delay lên 2 giây
+            }
         } else {
             musicplayerFragment.updateAlbumName(albumName);
             musicplayerFragment.updatePlayerInfo(songList, position);
-            musicplayerFragment.maximize();
+            if (shouldMinimize) {
+                musicplayerFragment.minimize();
+            } else {
+                musicplayerFragment.maximize();
+            }
         }
     }
 
-    // Overload cho các trường hợp không có albumName
-    public void showPlayer(List<Song> songList, int position) {
-        showPlayer(songList, position, "Now Playing");
+    // Overload cho các trường hợp không cần minimize
+    public void showPlayer(List<Song> songList, int position, String albumName) {
+        showPlayer(songList, position, albumName, false);
     }
 
     public List<Song> getCurrentPlaylist() {
@@ -201,6 +277,44 @@ public class MainActivity extends AppCompatActivity {
             musicplayerFragment.minimize();
         } else {
             super.onBackPressed();
+        }
+    }
+
+    private void handleInternetStateChange(boolean isConnected) {
+        if (isConnected && isOfflineMode && !isHandlingConnection) {
+            isHandlingConnection = true;
+
+            // Nếu có internet và đang ở chế độ offline
+            boolean isRemembered = sharedPreferences.getBoolean(KEY_REMEMBER, false);
+            String savedEmail = sharedPreferences.getString(KEY_EMAIL, "");
+            String savedPassword = sharedPreferences.getString(KEY_PASSWORD, "");
+
+            if (isRemembered && !savedEmail.isEmpty() && !savedPassword.isEmpty()) {
+                // Có thông tin đăng nhập đã lưu, thử tự động đăng nhập
+                auth.signInWithEmailAndPassword(savedEmail, savedPassword)
+                    .addOnCompleteListener(this, task -> {
+                        if (task.isSuccessful()) {
+                            // Đăng nhập thành công, sử dụng LoginUtils để xử lý
+                            isOfflineMode = false;
+                            LoginUtils.handleLoginSuccess(this, auth.getCurrentUser(), savedEmail);
+                        } else {
+                            // Đăng nhập thất bại, chuyển về màn login
+                            SharedPreferences.Editor editor = sharedPreferences.edit();
+                            editor.clear();
+                            editor.apply();
+                            Intent intent = new Intent(this, LoginActivity.class);
+                            startActivity(intent);
+                            finish();
+                        }
+                        isHandlingConnection = false;
+                    });
+            } else {
+                // Không có thông tin đăng nhập, chuyển về màn login
+                Intent intent = new Intent(this, LoginActivity.class);
+                startActivity(intent);
+                finish();
+                isHandlingConnection = false;
+            }
         }
     }
 }

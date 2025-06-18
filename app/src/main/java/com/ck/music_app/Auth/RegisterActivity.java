@@ -3,8 +3,6 @@ package com.ck.music_app.Auth;
 import android.app.Dialog;
 import android.os.Bundle;
 
-import com.google.android.material.snackbar.Snackbar;
-
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -20,23 +18,18 @@ import android.widget.Toast;
 import android.widget.Button;
 
 import com.google.android.material.textfield.TextInputEditText;
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import android.util.Patterns;
-import com.google.firebase.firestore.FirebaseFirestore;
-import java.util.HashMap;
-import java.util.Map;
 
 import com.ck.music_app.R;
 import com.ck.music_app.MainActivity;
+import com.ck.music_app.Services.FirebaseService;
 
 public class RegisterActivity extends AppCompatActivity {
 
-    private FirebaseAuth auth;
     private TextInputEditText emailEditText, passwordEditText, confirmPasswordEditText;
-
     private Dialog loadingDialog;
+    private FirebaseService firebaseService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,7 +43,7 @@ public class RegisterActivity extends AppCompatActivity {
             return insets;
         });
 
-        auth = FirebaseAuth.getInstance();
+        firebaseService = FirebaseService.getInstance();
 
         emailEditText = findViewById(R.id.emailEditText);
         passwordEditText = findViewById(R.id.passwordEditText);
@@ -66,7 +59,6 @@ public class RegisterActivity extends AppCompatActivity {
             }
         });
 
-        // Nếu có nút đăng ký, gán onClick cho nó:
         Button btnRegister = findViewById(R.id.registerButton);
         btnRegister.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -95,34 +87,23 @@ public class RegisterActivity extends AppCompatActivity {
         }
 
         showLoading();
-        auth.createUserWithEmailAndPassword(email, password)
-                .addOnCompleteListener(this, task -> {
-                    hideLoading();
-                    if (task.isSuccessful()) {
-                        FirebaseUser user = auth.getCurrentUser();
-                        createUserInFirestore(user);
-                        Intent intent = new Intent(RegisterActivity.this, MainActivity.class);
-                        intent.putExtra("email", email);
-                        startActivity(intent);
-                        finish();
-                    } else {
-                        Toast.makeText(RegisterActivity.this, "Đăng ký không thành công", Toast.LENGTH_SHORT).show();
-                    }
-                });
-    }
+        firebaseService.registerWithEmail(email, password, new FirebaseService.OnAuthCallback() {
+            @Override
+            public void onSuccess(FirebaseUser user) {
+                hideLoading();
+                Intent intent = new Intent(RegisterActivity.this, MainActivity.class);
+                intent.putExtra("email", email);
+                startActivity(intent);
+                finish();
+            }
 
-    private void createUserInFirestore(FirebaseUser user) {
-        if (user == null) return;
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
-        String uid = user.getUid();
-        Map<String, Object> userMap = new HashMap<>();
-        userMap.put("DateOfBirth", "");
-        userMap.put("Email", user.getEmail() != null ? user.getEmail() : "");
-        userMap.put("Name", user.getDisplayName() != null ? user.getDisplayName() : "");
-        userMap.put("songPlaying", "");
-        db.collection("users").document(uid).set(userMap);
+            @Override
+            public void onError(String errorMessage) {
+                hideLoading();
+                Toast.makeText(RegisterActivity.this, errorMessage, Toast.LENGTH_SHORT).show();
+            }
+        });
     }
-
 
     private void initLoadingDialog() {
         loadingDialog = new Dialog(this);
