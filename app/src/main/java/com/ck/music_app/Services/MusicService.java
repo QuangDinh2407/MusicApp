@@ -6,16 +6,20 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
+import android.content.res.AssetFileDescriptor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.Drawable;
 import android.media.MediaPlayer;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.support.v4.media.session.MediaSessionCompat;
+import android.util.Log;
 import android.widget.RemoteViews;
+import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
@@ -30,9 +34,12 @@ import com.ck.music_app.R;
 import com.ck.music_app.utils.MusicUtils;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class MusicService extends Service {
+    private static final String TAG = "MusicService";
+
     public static final String ACTION_PLAY = "com.ck.music_app.ACTION_PLAY";
     public static final String ACTION_PAUSE = "com.ck.music_app.ACTION_PAUSE";
     public static final String ACTION_PREVIOUS = "com.ck.music_app.ACTION_PREVIOUS";
@@ -68,6 +75,13 @@ public class MusicService extends Service {
     private boolean isShuffleOn = false;
     private int repeatMode = 0; // 0: no repeat, 1: repeat all, 2: repeat one
     private List<Song> originalSongList = new ArrayList<>(); // Lưu danh sách gốc
+
+    // Missing variable declarations
+    private NotificationManager notificationManager;
+    private MediaSessionCompat mediaSession;
+    private int currentProgress = 0;
+    private int currentDuration = 0;
+    private boolean isMuted = false;
 
     @Override
     public void onCreate() {
@@ -117,87 +131,91 @@ public class MusicService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (intent != null && intent.getAction() != null) {
-            switch (intent.getAction()) {
-                case ACTION_PLAY:
-                    if (intent.hasExtra("songList") && intent.hasExtra("position")) {
-                        songList = (List<Song>) intent.getSerializableExtra("songList");
-                        currentIndex = intent.getIntExtra("position", 0);
-                        playSong(currentIndex);
-                    } else {
-                        resumeMusic();
-                    }
-                    break;
-                case ACTION_PAUSE:
-                    pauseMusic();
-                    break;
-                case ACTION_PREVIOUS:
-                    playPrevious();
-                    break;
-                case ACTION_NEXT:
-                    playNext();
-                    break;
-                case ACTION_STOP:
-                    stopSelf();
-                    break;
-                case ACTION_SEEK:
-                    int position = intent.getIntExtra("position", 0);
-                    seekTo(position);
-                    break;
-                case ACTION_MUTE:
-                    toggleMute();
-                case ACTION_TOGGLE_SHUFFLE:
-                    boolean isShuffleOn = intent.getBooleanExtra("isShuffleOn", false);
-                    handleShuffleMode(isShuffleOn);
-                    break;
-                case ACTION_TOGGLE_REPEAT:
-                    int repeatMode = intent.getIntExtra("repeatMode", 0);
-                    handleRepeatMode(repeatMode);
-                    break;
+        try {
+            if (intent != null && intent.getAction() != null) {
+                switch (intent.getAction()) {
+                    case ACTION_PLAY:
+                        try {
+                            if (intent.hasExtra("songList") && intent.hasExtra("position")) {
+                                List<Song> newSongList = (List<Song>) intent.getSerializableExtra("songList");
+                                int newPosition = intent.getIntExtra("position", 0);
+
+                                // Validate songList
+                                if (newSongList == null || newSongList.isEmpty()) {
+                                    Log.e(TAG, "Received null or empty song list");
+                                    break;
+                                }
+
+                                // Validate position
+                                if (newPosition < 0 || newPosition >= newSongList.size()) {
+                                    Log.e(TAG,
+                                            "Invalid position: " + newPosition + ", list size: " + newSongList.size());
+                                    break;
+                                }
+
+                                // Validate song data
+                                Song songToPlay = newSongList.get(newPosition);
+                                if (songToPlay == null || songToPlay.getAudioUrl() == null
+                                        || songToPlay.getAudioUrl().trim().isEmpty()) {
+                                    Log.e(TAG, "Invalid song data or empty audio URL");
+                                    break;
+                                }
+
+                                // Update song list and play
+                                songList = new ArrayList<>(newSongList);
+                                currentIndex = newPosition;
+                                playSong(currentIndex);
+                            } else {
+                                resumeMusic();
+                            }
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error handling ACTION_PLAY: " + e.getMessage(), e);
+                        }
+                        break;
+                    case ACTION_PAUSE:
+                        pauseMusic();
+                        break;
+                    case ACTION_PREVIOUS:
+                        playPrevious();
+                        break;
+                    case ACTION_NEXT:
+                        playNext();
+                        break;
+                    case ACTION_STOP:
+                        stopSelf();
+                        break;
+                    case ACTION_SEEK:
+                        int position = intent.getIntExtra("position", 0);
+                        seekTo(position);
+                        break;
+                    case ACTION_MUTE:
+                        toggleMute();
+                        break;
+                    case ACTION_TOGGLE_SHUFFLE:
+                        boolean isShuffleOn = intent.getBooleanExtra("isShuffleOn", false);
+                        handleShuffleMode(isShuffleOn);
+                        break;
+                    case ACTION_TOGGLE_REPEAT:
+                        int repeatMode = intent.getIntExtra("repeatMode", 0);
+                        handleRepeatMode(repeatMode);
+                        break;
+                }
             }
+        } catch (Exception e) {
+            Log.e(TAG, "Unexpected error in onStartCommand: " + e.getMessage(), e);
         }
         return START_NOT_STICKY;
     }
 
     private void playSong(int index) {
-        if (index < 0 || index >= songList.size())
+        if (index < 0 || index >= songList.size()) {
             return;
-
-        try {
-            mediaPlayer.reset();
-            Song song = songList.get(index);
-            broadcastLoadingState(true);
-            mediaPlayer.setDataSource(song.getAudioUrl());
-            mediaPlayer.prepareAsync();
-
-            mediaPlayer.setOnPreparedListener(mp -> {
-                mediaPlayer.start();
-                isPlaying = true;
-                // Initialize progress values
-                currentProgress = 0;
-                currentDuration = mediaPlayer.getDuration();
-
-                // Start updates and broadcast state
-                startProgressUpdates();
-                broadcastPlayingState(true);
-                broadcastSongChanged(currentIndex);
-                broadcastLoadingState(false);
-
-                // Immediately broadcast initial progress to update notification
-                broadcastProgress(currentProgress, currentDuration);
-
-                // Start foreground service
-                startForeground(NOTIFICATION_ID, createNotification());
-            });
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        if (index < 0 || index >= songList.size()) return;
+        }
 
         try {
             // Đảm bảo MediaPlayer được khởi tạo
             initializeMediaPlayer();
-            
+
             // Reset và chuẩn bị MediaPlayer
             mediaPlayer.reset();
             Song song = songList.get(index);
@@ -222,13 +240,24 @@ public class MusicService extends Service {
                 }
 
                 mediaPlayer.prepareAsync();
-                
+
                 mediaPlayer.setOnPreparedListener(mp -> {
                     try {
                         mediaPlayer.start();
                         isPlaying = true;
+                        // Initialize progress values
+                        currentProgress = 0;
+                        currentDuration = mediaPlayer.getDuration();
+
+                        // Start updates and broadcast state
                         startProgressUpdates();
                         broadcastPlayingState(true);
+
+                        // Immediately broadcast initial progress to update notification
+                        broadcastProgress(currentProgress, currentDuration);
+
+                        // Start foreground service
+                        startForeground(NOTIFICATION_ID, createNotification());
                     } catch (Exception e) {
                         Log.e(TAG, "Error starting playback: " + e.getMessage());
                     } finally {
@@ -272,7 +301,8 @@ public class MusicService extends Service {
     }
 
     public void playNext() {
-        if (songList.isEmpty()) return;
+        if (songList.isEmpty())
+            return;
 
         if (repeatMode == 2) {
             // Repeat One: phát lại bài hiện tại
@@ -302,7 +332,8 @@ public class MusicService extends Service {
     }
 
     public void playPrevious() {
-        if (songList.isEmpty()) return;
+        if (songList.isEmpty())
+            return;
 
         if (repeatMode == 2) {
             // Repeat One: phát lại bài hiện tại
@@ -333,25 +364,41 @@ public class MusicService extends Service {
         }
     }
 
+    private void toggleMute() {
+        if (mediaPlayer != null) {
+            if (isMuted) {
+                // Unmute
+                mediaPlayer.setVolume(1.0f, 1.0f);
+                isMuted = false;
+            } else {
+                // Mute
+                mediaPlayer.setVolume(0.0f, 0.0f);
+                isMuted = true;
+            }
+            // Update notification to reflect mute state
+            showNotification();
+        }
+    }
+
     private void handleShuffleMode(boolean isShuffleOn) {
         this.isShuffleOn = isShuffleOn;
-        
+
         Song currentSong = songList.get(currentIndex);
-        
+
         if (isShuffleOn) {
             // Lưu danh sách gốc nếu chưa có
             if (originalSongList.isEmpty()) {
                 originalSongList = new ArrayList<>(songList);
             }
-            
+
             // Tạo và xáo trộn danh sách mới
             List<Song> shuffledList = new ArrayList<>(songList);
             Collections.shuffle(shuffledList);
-            
+
             // Đảm bảo bài hát hiện tại vẫn ở vị trí currentIndex
             shuffledList.remove(currentSong);
             shuffledList.add(currentIndex, currentSong);
-            
+
             // Cập nhật danh sách phát
             songList = shuffledList;
         } else {
@@ -399,21 +446,29 @@ public class MusicService extends Service {
     private void startProgressUpdates() {
         // Cập nhật progress bar mỗi giây
         new Thread(() -> {
-            while (true) {
-                try {
-                    if (mediaPlayer == null || !isPlaying) {
+            try {
+                while (isPlaying && mediaPlayer != null) {
+                    try {
+                        if (mediaPlayer.isPlaying()) {
+                            int currentPos = mediaPlayer.getCurrentPosition();
+                            int duration = mediaPlayer.getDuration();
+                            broadcastProgress(currentPos, duration);
+                        }
+                        Thread.sleep(1000);
+                    } catch (IllegalStateException e) {
+                        Log.e(TAG, "MediaPlayer in illegal state: " + e.getMessage());
+                        break;
+                    } catch (InterruptedException e) {
+                        Log.d(TAG, "Progress update thread interrupted");
+                        Thread.currentThread().interrupt();
+                        break;
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error in progress updates: " + e.getMessage());
                         break;
                     }
-                    
-                    if (mediaPlayer.isPlaying()) {
-                        broadcastProgress(mediaPlayer.getCurrentPosition(), mediaPlayer.getDuration());
-                    }
-                    
-                    Thread.sleep(1000);
-                } catch (Exception e) {
-                    Log.e(TAG, "Error in progress updates: " + e.getMessage());
-                    break;
                 }
+            } catch (Exception e) {
+                Log.e(TAG, "Fatal error in progress thread: " + e.getMessage());
             }
         }).start();
 
@@ -502,15 +557,65 @@ public class MusicService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
+
+        // Stop all updates first
+        stopLyricUpdates();
+
+        // Stop progress updates by setting isPlaying to false
+        isPlaying = false;
+
+        // Release MediaPlayer safely
         if (mediaPlayer != null) {
-            stopLyricUpdates();
-            mediaPlayer.release();
-            mediaPlayer = null;
+            try {
+                if (mediaPlayer.isPlaying()) {
+                    mediaPlayer.stop();
+                }
+                mediaPlayer.reset();
+                mediaPlayer.release();
+            } catch (Exception e) {
+                Log.e(TAG, "Error releasing MediaPlayer: " + e.getMessage());
+            } finally {
+                mediaPlayer = null;
+            }
         }
+
+        // Release MediaSession safely
         if (mediaSession != null) {
-            mediaSession.release();
+            try {
+                mediaSession.release();
+            } catch (Exception e) {
+                Log.e(TAG, "Error releasing MediaSession: " + e.getMessage());
+            } finally {
+                mediaSession = null;
+            }
         }
-        stopForeground(true);
+
+        // Clear static references to prevent memory leaks
+        currentSong = null;
+        if (songList != null) {
+            songList.clear();
+        }
+        if (originalSongList != null) {
+            originalSongList.clear();
+        }
+
+        // Stop foreground service
+        try {
+            stopForeground(true);
+        } catch (Exception e) {
+            Log.e(TAG, "Error stopping foreground: " + e.getMessage());
+        }
+
+        // Cancel all notifications
+        if (notificationManager != null) {
+            try {
+                notificationManager.cancel(NOTIFICATION_ID);
+            } catch (Exception e) {
+                Log.e(TAG, "Error canceling notification: " + e.getMessage());
+            }
+        }
+
+        Log.d(TAG, "MusicService destroyed successfully");
     }
 
     private void createNotificationChannel() {
@@ -685,5 +790,21 @@ public class MusicService extends Service {
             return songList.get(currentIndex);
         }
         return null;
+    }
+
+    // Add static methods for external access
+    public static Song getCurrentSongStatic() {
+        return currentSong;
+    }
+
+    public static List<Song> getCurrentPlaylist() {
+        return new ArrayList<>(songList);
+    }
+
+    public static boolean isServicePlaying() {
+        // This should be called from a service instance, but we'll provide a static
+        // method
+        // You should maintain a static reference or use a different approach
+        return false; // Default value, implement proper logic based on your needs
     }
 }

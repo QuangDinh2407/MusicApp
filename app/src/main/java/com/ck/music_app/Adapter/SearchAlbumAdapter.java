@@ -34,6 +34,11 @@ public class SearchAlbumAdapter extends RecyclerView.Adapter<SearchAlbumAdapter.
         this.listener = listener;
     }
 
+    public void updateAlbumList(List<Album> newAlbumList) {
+        this.albumList = newAlbumList;
+        notifyDataSetChanged();
+    }
+
     @NonNull
     @Override
     public AlbumViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {

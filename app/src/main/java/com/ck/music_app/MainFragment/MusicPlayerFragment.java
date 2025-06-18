@@ -1,5 +1,6 @@
 package com.ck.music_app.MainFragment;
 
+import android.Manifest;
 import android.animation.Animator;
 import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
@@ -8,13 +9,19 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.drawable.Drawable;
+import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.animation.LinearInterpolator;
+import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
@@ -24,6 +31,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.viewpager2.widget.ViewPager2;
@@ -38,11 +46,8 @@ import com.ck.music_app.Model.Song;
 import com.ck.music_app.R;
 import com.ck.music_app.Services.MusicService;
 import com.ck.music_app.Viewpager.MusicPlayerPagerAdapter;
-import com.ck.music_app.utils.GradientUtils;
 import com.ck.music_app.utils.DownloadUtils;
-
-import android.graphics.Bitmap;
-import android.graphics.drawable.Drawable;
+import com.ck.music_app.utils.GradientUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -141,9 +146,14 @@ public class MusicPlayerFragment extends Fragment {
         tvAlbumName.setText(albumName);
 
         fragments = new Fragment[] {
-                PlayMusicFragment.newInstance(songList, currentIndex),
+                PlayMusicFragment.newInstance(currentIndex),
                 new LyricFragment()
         };
+
+        // **THÊM: Lưu reference đến PlayMusicFragment để dễ dàng truy cập**
+        if (fragments[0] instanceof PlayMusicFragment) {
+            playMusicFragment = (PlayMusicFragment) fragments[0];
+        }
 
         viewPager = view.findViewById(R.id.view_pager);
         MusicPlayerPagerAdapter adapter = new MusicPlayerPagerAdapter(this, fragments);
@@ -160,7 +170,7 @@ public class MusicPlayerFragment extends Fragment {
 
         // Khởi tạo view download
         initializeDownloadView(view);
-        
+
         return view;
     }
 
@@ -195,13 +205,8 @@ public class MusicPlayerFragment extends Fragment {
     }
 
     private void initListeners() {
-        btnMiniPlayPause.setOnClickListener(v -> {
-            Intent intent = new Intent(requireContext(), MusicService.class);
-            intent.setAction(isPlaying ? MusicService.ACTION_PAUSE : MusicService.ACTION_PLAY);
-            requireContext().startService(intent);
-        });
-        miniPlayerLayout.setOnClickListener(v -> maximize());
         btnMiniPlayPause.setOnClickListener(v -> togglePlayPause());
+        miniPlayerLayout.setOnClickListener(v -> maximize());
         btnMiniPrevious.setOnClickListener(v -> playPrevious());
         btnMiniNext.setOnClickListener(v -> playNext());
         btnBack.setOnClickListener(v -> minimize());
@@ -483,9 +488,47 @@ public class MusicPlayerFragment extends Fragment {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        broadcaster.unregisterReceiver(musicReceiver);
-        stopVinylRotation(imgMiniVinyl);
-        stopCoverRotation();
+
+        // Safely unregister receiver
+        try {
+            if (broadcaster != null && musicReceiver != null) {
+                broadcaster.unregisterReceiver(musicReceiver);
+            }
+        } catch (Exception e) {
+            // Receiver might not be registered, ignore
+        }
+
+        // Stop animations safely
+        try {
+            stopVinylRotation(imgMiniVinyl);
+            stopCoverRotation();
+        } catch (Exception e) {
+            // Ignore animation errors
+        }
+
+        // Cancel any ongoing downloads
+        if (isDownloading && downloadThread != null) {
+            try {
+                downloadThread.interrupt();
+                isDownloading = false;
+            } catch (Exception e) {
+                // Ignore
+            }
+        }
+
+        // Dismiss loading dialog safely
+        try {
+            if (loadingDialog != null && loadingDialog.isShowing()) {
+                loadingDialog.dismiss();
+            }
+        } catch (Exception e) {
+            // Ignore
+        }
+
+        // Clear references
+        songList = null;
+        fragments = null;
+        viewPager = null;
     }
 
     public List<Song> getSongList() {
@@ -508,7 +551,6 @@ public class MusicPlayerFragment extends Fragment {
         this.songList = new ArrayList<>(newSongList);
         this.currentIndex = newIndex;
 
-<<<<<<< HEAD
         // Cập nhật giao diện với null check
         if (songList != null && !songList.isEmpty() && currentIndex >= 0 && currentIndex < songList.size()) {
             Song song = songList.get(currentIndex);
@@ -516,50 +558,129 @@ public class MusicPlayerFragment extends Fragment {
         }
 
         // Cập nhật PlayMusicFragment nếu đang hiển thị
-        if (fragments != null && fragments.length > 0 && fragments[0] instanceof PlayMusicFragment) {
-            PlayMusicFragment playMusicFragment = (PlayMusicFragment) fragments[0];
+        if (playMusicFragment != null) {
             playMusicFragment.updateSongList(songList, currentIndex);
+        }
+
+        // Gửi danh sách mới đến Service
+        try {
+            if (getContext() != null) {
+                Intent intent = new Intent(getContext(), MusicService.class);
+                intent.setAction(MusicService.ACTION_PLAY);
+                intent.putExtra("songList", new ArrayList<>(songList));
+                intent.putExtra("position", currentIndex);
+                getContext().startService(intent);
+            }
+        } catch (Exception e) {
+            Log.e("MusicPlayerFragment", "Error starting music service: " + e.getMessage());
+            if (getContext() != null) {
+                Toast.makeText(getContext(), "Lỗi khi bắt đầu phát nhạc", Toast.LENGTH_SHORT).show();
+            }
         }
     }
 
     public void updateSongList(List<Song> newSongList, int newIndex) {
-        this.songList = new ArrayList<>(newSongList);
-        this.currentIndex = newIndex;
+        try {
+            // Validate input parameters
+            if (newSongList == null || newSongList.isEmpty()) {
+                Log.e("MusicPlayerFragment", "New song list is null or empty");
+                return;
+            }
 
-        // Cập nhật UI với bài hát mới
-        if (songList != null && !songList.isEmpty() && currentIndex < songList.size()) {
-            Song currentSong = songList.get(currentIndex);
+            if (newIndex < 0 || newIndex >= newSongList.size()) {
+                Log.e("MusicPlayerFragment", "Invalid index: " + newIndex + ", list size: " + newSongList.size());
+                return;
+            }
+
+            // Validate current song
+            Song currentSong = newSongList.get(newIndex);
+            if (currentSong == null) {
+                Log.e("MusicPlayerFragment", "Current song is null at index: " + newIndex);
+                return;
+            }
+
+            // Update internal state
+            this.songList = new ArrayList<>(newSongList);
+            this.currentIndex = newIndex;
+
+            // Cập nhật UI với bài hát mới (với null checks)
+            if (getContext() == null || !isAdded()) {
+                Log.w("MusicPlayerFragment", "Fragment not attached, skipping UI updates");
+                return;
+            }
 
             // Cập nhật thông tin bài hát với null check
             if (tvMiniTitle != null) {
-                tvMiniTitle.setText(currentSong.getTitle());
+                tvMiniTitle.setText(currentSong.getTitle() != null ? currentSong.getTitle() : "Unknown Title");
             }
             if (tvMiniArtist != null) {
-                tvMiniArtist.setText(currentSong.getArtistId());
+                tvMiniArtist.setText(currentSong.getArtistId() != null ? currentSong.getArtistId() : "Unknown Artist");
             }
 
             // Cập nhật ảnh bìa với null check
             if (imgMiniCover != null && getContext() != null) {
-                Glide.with(this)
-                        .load(currentSong.getCoverUrl())
-                        .placeholder(R.mipmap.ic_launcher)
-                        .circleCrop()
-                        .into(imgMiniCover);
+                try {
+                    Glide.with(this)
+                            .load(currentSong.getCoverUrl())
+                            .placeholder(R.mipmap.ic_launcher)
+                            .error(R.mipmap.ic_launcher)
+                            .circleCrop()
+                            .into(imgMiniCover);
+                } catch (Exception e) {
+                    Log.e("MusicPlayerFragment", "Error loading cover image: " + e.getMessage());
+                    // Set default image on error
+                    imgMiniCover.setImageResource(R.mipmap.ic_launcher);
+                }
+            }
+
+            // Cập nhật giao diện mini player
+            try {
+                updateMiniPlayer(currentSong);
+            } catch (Exception e) {
+                Log.e("MusicPlayerFragment", "Error updating mini player: " + e.getMessage());
             }
 
             // Cập nhật trạng thái phát
-            updatePlayingState(isPlaying);
- 
-        // Cập nhật giao diện mini player
-        Song song = songList.get(currentIndex);
-        updateMiniPlayer(song);
+            try {
+                updatePlayingState(isPlaying);
+            } catch (Exception e) {
+                Log.e("MusicPlayerFragment", "Error updating playing state: " + e.getMessage());
+            }
 
-        // Gửi danh sách mới đến Service
-        Intent intent = new Intent(requireContext(), MusicService.class);
-        intent.setAction(MusicService.ACTION_PLAY);
-        intent.putExtra("songList", new ArrayList<>(songList));
-        intent.putExtra("position", currentIndex);
-        requireContext().startService(intent);
+            // **THÊM: Cập nhật PlayMusicFragment với danh sách bài hát mới**
+            try {
+                if (playMusicFragment != null) {
+                    playMusicFragment.updateSongList(songList, currentIndex);
+                    Log.d("MusicPlayerFragment", "Updated PlayMusicFragment with new song list");
+                } else {
+                    Log.w("MusicPlayerFragment", "PlayMusicFragment reference is null");
+                }
+            } catch (Exception e) {
+                Log.e("MusicPlayerFragment", "Error updating PlayMusicFragment: " + e.getMessage());
+            }
+
+            // Gửi danh sách mới đến Service
+            try {
+                if (getContext() != null) {
+                    Intent intent = new Intent(getContext(), MusicService.class);
+                    intent.setAction(MusicService.ACTION_PLAY);
+                    intent.putExtra("songList", new ArrayList<>(songList));
+                    intent.putExtra("position", currentIndex);
+                    getContext().startService(intent);
+                }
+            } catch (Exception e) {
+                Log.e("MusicPlayerFragment", "Error starting music service: " + e.getMessage());
+                if (getContext() != null) {
+                    Toast.makeText(getContext(), "Lỗi khi bắt đầu phát nhạc", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+        } catch (Exception e) {
+            Log.e("MusicPlayerFragment", "Unexpected error in updateSongList: " + e.getMessage(), e);
+            if (getContext() != null) {
+                Toast.makeText(getContext(), "Lỗi khi cập nhật danh sách bài hát", Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 
     private void initializeDownloadView(View view) {
@@ -573,44 +694,52 @@ public class MusicPlayerFragment extends Fragment {
 
         // Thêm view tiến trình vào container
         FrameLayout downloadContainer = view.findViewById(R.id.downloadContainer);
-        downloadContainer.addView(downloadProgressView);
-        downloadProgressView.setVisibility(View.GONE);
+        if (downloadContainer != null) {
+            downloadContainer.addView(downloadProgressView);
+            downloadProgressView.setVisibility(View.GONE);
 
-        // Thêm animation cho view download
-        downloadProgressView.setTranslationY(200);
-        downloadProgressView.setAlpha(0f);
+            // Thêm animation cho view download
+            downloadProgressView.setTranslationY(200);
+            downloadProgressView.setAlpha(0f);
+        }
 
         btnCancelDownload.setOnClickListener(v -> cancelDownload());
     }
 
     public void handleDownload(Song song) {
         if (isDownloading) {
-            Toast.makeText(getContext(), "Đang tải xuống...", Toast.LENGTH_SHORT).show();
+            if (getContext() != null) {
+                Toast.makeText(getContext(), "Đang tải xuống...", Toast.LENGTH_SHORT).show();
+            }
             return;
         }
 
         if (song == null || song.getAudioUrl() == null) {
-            Toast.makeText(getContext(), "Không có bài hát nào đang phát", Toast.LENGTH_SHORT).show();
+            if (getContext() != null) {
+                Toast.makeText(getContext(), "Không có bài hát nào đang phát", Toast.LENGTH_SHORT).show();
+            }
             return;
         }
 
         // Kiểm tra nếu URL bắt đầu bằng "content://" thì là bài hát local
         if (song.getAudioUrl().startsWith("content://")) {
-            Toast.makeText(getContext(), "Bài hát đã được tải về thiết bị", Toast.LENGTH_SHORT).show();
+            if (getContext() != null) {
+                Toast.makeText(getContext(), "Bài hát đã được tải về thiết bị", Toast.LENGTH_SHORT).show();
+            }
             return;
         }
 
         // Kiểm tra quyền truy cập bộ nhớ
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(requireContext(), 
+            if (ContextCompat.checkSelfPermission(requireContext(),
                     Manifest.permission.READ_MEDIA_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[]{Manifest.permission.READ_MEDIA_AUDIO}, 1001);
+                requestPermissions(new String[] { Manifest.permission.READ_MEDIA_AUDIO }, 1001);
                 return;
             }
         } else {
-            if (ContextCompat.checkSelfPermission(requireContext(), 
+            if (ContextCompat.checkSelfPermission(requireContext(),
                     Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1001);
+                requestPermissions(new String[] { Manifest.permission.WRITE_EXTERNAL_STORAGE }, 1001);
                 return;
             }
         }
@@ -621,44 +750,43 @@ public class MusicPlayerFragment extends Fragment {
 
         downloadThread = new Thread(() -> {
             DownloadUtils.downloadSong(
-                requireContext(),
-                song.getAudioUrl(),
-                song.getTitle(),
-                song.getArtistId(),
-                song.getCoverUrl(),
-                song.getLyrics(),
-                new DownloadUtils.DownloadCallback() {
-                    @Override
-                    public void onProgressUpdate(int progress) {
-                        if (Thread.currentThread().isInterrupted()) {
-                            throw new RuntimeException("Download cancelled");
+                    requireContext(),
+                    song.getAudioUrl(),
+                    song.getTitle(),
+                    song.getArtistId(),
+                    song.getCoverUrl(),
+                    song.getLyrics(),
+                    new DownloadUtils.DownloadCallback() {
+                        @Override
+                        public void onProgressUpdate(int progress) {
+                            if (Thread.currentThread().isInterrupted()) {
+                                throw new RuntimeException("Download cancelled");
+                            }
+                            requireActivity().runOnUiThread(() -> {
+                                progressBar.setProgress(progress);
+                                tvDownloadPercent.setText(progress + "%");
+                                tvDownloadTitle.setText("Đang tải: " + song.getTitle());
+                            });
                         }
-                        requireActivity().runOnUiThread(() -> {
-                            progressBar.setProgress(progress);
-                            tvDownloadPercent.setText(progress + "%");
-                            tvDownloadTitle.setText("Đang tải: " + song.getTitle());
-                        });
-                    }
 
-                    @Override
-                    public void onDownloadComplete(String filePath) {
-                        requireActivity().runOnUiThread(() -> {
-                            hideDownloadProgress();
-                            Toast.makeText(getContext(), "Tải xuống thành công!", Toast.LENGTH_SHORT).show();
-                            isDownloading = false;
-                        });
-                    }
+                        @Override
+                        public void onDownloadComplete(String filePath) {
+                            requireActivity().runOnUiThread(() -> {
+                                hideDownloadProgress();
+                                Toast.makeText(getContext(), "Tải xuống thành công!", Toast.LENGTH_SHORT).show();
+                                isDownloading = false;
+                            });
+                        }
 
-                    @Override
-                    public void onError(String message) {
-                        requireActivity().runOnUiThread(() -> {
-                            hideDownloadProgress();
-                            Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
-                            isDownloading = false;
-                        });
-                    }
-                }
-            );
+                        @Override
+                        public void onError(String message) {
+                            requireActivity().runOnUiThread(() -> {
+                                hideDownloadProgress();
+                                Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
+                                isDownloading = false;
+                            });
+                        }
+                    });
         });
         downloadThread.start();
     }
@@ -687,7 +815,9 @@ public class MusicPlayerFragment extends Fragment {
         }
         hideDownloadProgress();
         isDownloading = false;
-        Toast.makeText(getContext(), "Đã hủy tải xuống", Toast.LENGTH_SHORT).show();
+        if (getContext() != null) {
+            Toast.makeText(getContext(), "Đã hủy tải xuống", Toast.LENGTH_SHORT).show();
+        }
     }
 
     @Override
@@ -702,7 +832,7 @@ public class MusicPlayerFragment extends Fragment {
         this.albumName = albumName;
         this.songList = new ArrayList<>(songList);
         this.currentIndex = currentIndex;
-        
+
         // Gửi danh sách phát mới đến Service
         Intent intent = new Intent(requireContext(), MusicService.class);
         intent.setAction(MusicService.ACTION_PLAY);
@@ -712,11 +842,10 @@ public class MusicPlayerFragment extends Fragment {
 
         // Cập nhật giao diện mini player
         updateMiniPlayer(songList.get(currentIndex));
-        
+
         // Cập nhật tên album
         if (tvAlbumName != null) {
             tvAlbumName.setText(albumName);
         }
     }
-} 
-
+}

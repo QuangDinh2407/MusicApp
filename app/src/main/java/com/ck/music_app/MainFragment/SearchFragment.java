@@ -2,6 +2,7 @@ package com.ck.music_app.MainFragment;
 
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -222,31 +223,44 @@ public class SearchFragment extends Fragment
     }
 
     private void setupRecyclerViews() {
-        // Songs RecyclerView
-        songAdapter = new RecyclerViewAdapterSong(getContext(), new ArrayList<>());
-        recyclerViewSongs.setLayoutManager(new LinearLayoutManager(getContext()));
-        recyclerViewSongs.setAdapter(songAdapter);
-        songAdapter.setOnSongClickListener(this);
+        try {
+            // Songs RecyclerView
+            songAdapter = new RecyclerViewAdapterSong(getContext(), new ArrayList<>());
+            recyclerViewSongs.setLayoutManager(new LinearLayoutManager(getContext()));
+            recyclerViewSongs.setAdapter(songAdapter);
+            songAdapter.setOnSongClickListener(this);
 
-        // Artists RecyclerView
-        recyclerViewArtists
-                .setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
+            // Artists RecyclerView
+            artistAdapter = new SearchArtistAdapter(getContext(), new ArrayList<>());
+            artistAdapter.setOnArtistClickListener(this);
+            recyclerViewArtists
+                    .setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
+            recyclerViewArtists.setAdapter(artistAdapter);
 
-        // Albums RecyclerView
-        recyclerViewAlbums
-                .setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
+            // Albums RecyclerView
+            albumAdapter = new SearchAlbumAdapter(getContext(), new ArrayList<>());
+            albumAdapter.setOnAlbumClickListener(this);
+            recyclerViewAlbums
+                    .setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
+            recyclerViewAlbums.setAdapter(albumAdapter);
 
-        // Playlists RecyclerView
-        recyclerViewPlaylists.setLayoutManager(new LinearLayoutManager(getContext()));
+            // Playlists RecyclerView
+            playlistAdapter = new SearchPlaylistAdapter(getContext(), new ArrayList<>());
+            playlistAdapter.setOnPlaylistClickListener(this);
+            recyclerViewPlaylists.setLayoutManager(new LinearLayoutManager(getContext()));
+            recyclerViewPlaylists.setAdapter(playlistAdapter);
 
-        // History RecyclerView
-        historyAdapter = new SearchHistoryAdapter(searchHistory);
-        historyAdapter.setOnHistoryClickListener(this);
-        recyclerViewHistory.setLayoutManager(new LinearLayoutManager(getContext()));
-        recyclerViewHistory.setAdapter(historyAdapter);
+            // History RecyclerView
+            historyAdapter = new SearchHistoryAdapter(searchHistory);
+            historyAdapter.setOnHistoryClickListener(this);
+            recyclerViewHistory.setLayoutManager(new LinearLayoutManager(getContext()));
+            recyclerViewHistory.setAdapter(historyAdapter);
 
-        // Suggestions RecyclerView
-        recyclerViewSuggestions.setLayoutManager(new LinearLayoutManager(getContext()));
+            // Suggestions RecyclerView
+            recyclerViewSuggestions.setLayoutManager(new LinearLayoutManager(getContext()));
+        } catch (Exception e) {
+            Log.e("SearchFragment", "Error setting up RecyclerViews: " + e.getMessage());
+        }
     }
 
     private void setupSearchView() {
@@ -518,21 +532,63 @@ public class SearchFragment extends Fragment
     }
 
     private void displayTopResultSong(Song song) {
-        tvTopResultTitle.setText(song.getTitle());
-        tvTopResultSubtitle.setText(song.getArtistId());
-        tvTopResultType.setText("BÀI HÁT");
-
-        Glide.with(this)
-                .load(song.getCoverUrl())
-                .placeholder(R.mipmap.ic_launcher)
-                .into(imgTopResultCover);
-
-        imgTopResultPlay.setOnClickListener(v -> {
-            if (getActivity() instanceof MainActivity) {
-                List<Song> singleSong = Arrays.asList(song);
-                ((MainActivity) getActivity()).playSong(singleSong, 0);
+        try {
+            if (song == null) {
+                Log.e("SearchFragment", "Song is null in displayTopResultSong");
+                return;
             }
-        });
+
+            // Safely set text with null checks
+            if (tvTopResultTitle != null) {
+                tvTopResultTitle.setText(song.getTitle() != null ? song.getTitle() : "Unknown Title");
+            }
+            if (tvTopResultSubtitle != null) {
+                tvTopResultSubtitle.setText(song.getArtistId() != null ? song.getArtistId() : "Unknown Artist");
+            }
+            if (tvTopResultType != null) {
+                tvTopResultType.setText("BÀI HÁT");
+            }
+
+            // Safely load image
+            if (imgTopResultCover != null && getContext() != null) {
+                Glide.with(this)
+                        .load(song.getCoverUrl())
+                        .placeholder(R.mipmap.ic_launcher)
+                        .error(R.mipmap.ic_launcher)
+                        .into(imgTopResultCover);
+            }
+
+            // Safely set click listener
+            if (imgTopResultPlay != null) {
+                imgTopResultPlay.setOnClickListener(v -> {
+                    try {
+                        // Validate activity and context before playing
+                        if (getActivity() == null || !isAdded()) {
+                            Log.e("SearchFragment", "Fragment not attached when playing top result");
+                            return;
+                        }
+
+                        if (!(getActivity() instanceof MainActivity)) {
+                            Log.e("SearchFragment", "Activity is not MainActivity when playing top result");
+                            return;
+                        }
+
+                        // Create single song list and play
+                        List<Song> singleSong = Arrays.asList(song);
+                        ((MainActivity) getActivity()).playSong(singleSong, 0);
+
+                    } catch (Exception e) {
+                        Log.e("SearchFragment", "Error playing top result song: " + e.getMessage(), e);
+                        if (getContext() != null) {
+                            Toast.makeText(getContext(), "Lỗi khi phát nhạc: " + e.getMessage(), Toast.LENGTH_SHORT)
+                                    .show();
+                        }
+                    }
+                });
+            }
+        } catch (Exception e) {
+            Log.e("SearchFragment", "Error in displayTopResultSong: " + e.getMessage(), e);
+        }
     }
 
     private void displayTopResultArtist(Artist artist) {
@@ -557,9 +613,13 @@ public class SearchFragment extends Fragment
             int limit = (currentFilter == SearchFilter.SONGS) ? songs.size() : Math.min(songs.size(), 5);
             List<Song> limitedSongs = songs.subList(0, limit);
 
-            songAdapter = new RecyclerViewAdapterSong(getContext(), limitedSongs);
-            songAdapter.setOnSongClickListener(this);
-            recyclerViewSongs.setAdapter(songAdapter);
+            if (songAdapter == null) {
+                songAdapter = new RecyclerViewAdapterSong(getContext(), limitedSongs);
+                songAdapter.setOnSongClickListener(this);
+                recyclerViewSongs.setAdapter(songAdapter);
+            } else {
+                songAdapter.updateSongList(limitedSongs);
+            }
             layoutSongs.setVisibility(View.VISIBLE);
         } else {
             layoutSongs.setVisibility(View.GONE);
@@ -572,9 +632,13 @@ public class SearchFragment extends Fragment
             int limit = (currentFilter == SearchFilter.ARTISTS) ? artists.size() : Math.min(artists.size(), 5);
             List<Artist> limitedArtists = artists.subList(0, limit);
 
-            artistAdapter = new SearchArtistAdapter(getContext(), limitedArtists);
-            artistAdapter.setOnArtistClickListener(this);
-            recyclerViewArtists.setAdapter(artistAdapter);
+            if (artistAdapter == null) {
+                artistAdapter = new SearchArtistAdapter(getContext(), limitedArtists);
+                artistAdapter.setOnArtistClickListener(this);
+                recyclerViewArtists.setAdapter(artistAdapter);
+            } else {
+                artistAdapter.updateArtistList(limitedArtists);
+            }
             layoutArtists.setVisibility(View.VISIBLE);
         } else {
             layoutArtists.setVisibility(View.GONE);
@@ -587,9 +651,13 @@ public class SearchFragment extends Fragment
             int limit = (currentFilter == SearchFilter.ALBUMS) ? albums.size() : Math.min(albums.size(), 5);
             List<Album> limitedAlbums = albums.subList(0, limit);
 
-            albumAdapter = new SearchAlbumAdapter(getContext(), limitedAlbums);
-            albumAdapter.setOnAlbumClickListener(this);
-            recyclerViewAlbums.setAdapter(albumAdapter);
+            if (albumAdapter == null) {
+                albumAdapter = new SearchAlbumAdapter(getContext(), limitedAlbums);
+                albumAdapter.setOnAlbumClickListener(this);
+                recyclerViewAlbums.setAdapter(albumAdapter);
+            } else {
+                albumAdapter.updateAlbumList(limitedAlbums);
+            }
             layoutAlbums.setVisibility(View.VISIBLE);
         } else {
             layoutAlbums.setVisibility(View.GONE);
@@ -602,9 +670,13 @@ public class SearchFragment extends Fragment
             int limit = (currentFilter == SearchFilter.PLAYLISTS) ? playlists.size() : Math.min(playlists.size(), 5);
             List<Playlist> limitedPlaylists = playlists.subList(0, limit);
 
-            playlistAdapter = new SearchPlaylistAdapter(getContext(), limitedPlaylists);
-            playlistAdapter.setOnPlaylistClickListener(this);
-            recyclerViewPlaylists.setAdapter(playlistAdapter);
+            if (playlistAdapter == null) {
+                playlistAdapter = new SearchPlaylistAdapter(getContext(), limitedPlaylists);
+                playlistAdapter.setOnPlaylistClickListener(this);
+                recyclerViewPlaylists.setAdapter(playlistAdapter);
+            } else {
+                playlistAdapter.updatePlaylistList(limitedPlaylists);
+            }
             layoutPlaylists.setVisibility(View.VISIBLE);
         } else {
             layoutPlaylists.setVisibility(View.GONE);
@@ -797,92 +869,231 @@ public class SearchFragment extends Fragment
 
     @Override
     public void onSongClick(List<Song> songList, int position) {
-        if (getActivity() instanceof MainActivity) {
+        try {
+            // Validate input parameters
+            if (songList == null || songList.isEmpty()) {
+                Log.e("SearchFragment", "Song list is null or empty");
+                if (getContext() != null) {
+                    Toast.makeText(getContext(), "Danh sách bài hát trống", Toast.LENGTH_SHORT).show();
+                }
+                return;
+            }
+
+            if (position < 0 || position >= songList.size()) {
+                Log.e("SearchFragment", "Invalid position: " + position + ", list size: " + songList.size());
+                if (getContext() != null) {
+                    Toast.makeText(getContext(), "Vị trí bài hát không hợp lệ", Toast.LENGTH_SHORT).show();
+                }
+                return;
+            }
+
+            // Validate activity and context
+            if (getActivity() == null || !isAdded()) {
+                Log.e("SearchFragment", "Fragment not attached to activity");
+                return;
+            }
+
+            if (!(getActivity() instanceof MainActivity)) {
+                Log.e("SearchFragment", "Activity is not MainActivity");
+                return;
+            }
+
+            // Validate song data
+            Song selectedSong = songList.get(position);
+            if (selectedSong == null) {
+                Log.e("SearchFragment", "Selected song is null");
+                if (getContext() != null) {
+                    Toast.makeText(getContext(), "Thông tin bài hát không hợp lệ", Toast.LENGTH_SHORT).show();
+                }
+                return;
+            }
+
+            // Play song with additional safety
             ((MainActivity) getActivity()).playSong(songList, position);
+
+        } catch (Exception e) {
+            Log.e("SearchFragment", "Error playing song: " + e.getMessage(), e);
+            if (getContext() != null) {
+                Toast.makeText(getContext(), "Lỗi khi phát nhạc: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
         }
     }
 
     @Override
     public void onHistoryClick(String query) {
-        // Reset state when clicking history item
-        resetSearchState();
-        searchView.setQuery(query, false);
-        performSearch(query);
-        hasPerformedSearch = true;
-        currentQuery = query;
-        previousQuery = query;
-        // Don't save to history again since it's already in history
+        try {
+            if (query != null && !query.trim().isEmpty()) {
+                // Reset state when clicking history item
+                resetSearchState();
+                if (searchView != null) {
+                    searchView.setQuery(query, false);
+                    performSearch(query);
+                    hasPerformedSearch = true;
+                    currentQuery = query;
+                    previousQuery = query;
+                }
+            }
+        } catch (Exception e) {
+            Log.e("SearchFragment", "Error handling history click: " + e.getMessage());
+        }
     }
 
     @Override
     public void onHistoryDelete(String query) {
-        removeFromHistory(query);
+        try {
+            if (query != null) {
+                removeFromHistory(query);
+            }
+        } catch (Exception e) {
+            Log.e("SearchFragment", "Error deleting history: " + e.getMessage());
+        }
     }
 
     // Navigation methods for search results
     @Override
     public void onArtistClick(Artist artist) {
-        navigateToArtistDetail(artist);
+        try {
+            if (artist != null) {
+                navigateToArtistDetail(artist);
+            }
+        } catch (Exception e) {
+            Log.e("SearchFragment", "Error navigating to artist: " + e.getMessage());
+            if (getContext() != null) {
+                Toast.makeText(getContext(), "Lỗi khi mở nghệ sĩ", Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 
     @Override
     public void onAlbumClick(Album album) {
-        navigateToAlbumDetail(album);
+        try {
+            if (album != null) {
+                navigateToAlbumDetail(album);
+            }
+        } catch (Exception e) {
+            Log.e("SearchFragment", "Error navigating to album: " + e.getMessage());
+            if (getContext() != null) {
+                Toast.makeText(getContext(), "Lỗi khi mở album", Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 
     @Override
     public void onPlaylistClick(Playlist playlist) {
-        navigateToPlaylistDetail(playlist);
+        try {
+            if (playlist != null) {
+                navigateToPlaylistDetail(playlist);
+            }
+        } catch (Exception e) {
+            Log.e("SearchFragment", "Error navigating to playlist: " + e.getMessage());
+            if (getContext() != null) {
+                Toast.makeText(getContext(), "Lỗi khi mở playlist", Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 
     private void navigateToArtistDetail(Artist artist) {
-        // For now, show toast - can be expanded to artist detail fragment later
-        Toast.makeText(getContext(), "Xem nghệ sĩ: " + artist.getName(), Toast.LENGTH_SHORT).show();
+        try {
+            // For now, show toast - can be expanded to artist detail fragment later
+            if (getContext() != null) {
+                Toast.makeText(getContext(), "Xem nghệ sĩ: " + artist.getName(), Toast.LENGTH_SHORT).show();
+            }
 
-        // TODO: Implement artist detail fragment navigation
-        // Example: Navigate to artist albums/songs view
-        // ArtistDetailFragment fragment = ArtistDetailFragment.newInstance(artist);
-        // getParentFragmentManager().beginTransaction()
-        // .setCustomAnimations(R.anim.slide_in_left, R.anim.slide_out_left)
-        // .replace(R.id.fragment_container, fragment)
-        // .addToBackStack(null)
-        // .commit();
+            // TODO: Implement artist detail fragment navigation
+            // Example: Navigate to artist albums/songs view
+            // ArtistDetailFragment fragment = ArtistDetailFragment.newInstance(artist);
+            // getParentFragmentManager().beginTransaction()
+            // .setCustomAnimations(R.anim.slide_in_left, R.anim.slide_out_left)
+            // .replace(R.id.fragment_container, fragment)
+            // .addToBackStack(null)
+            // .commit();
+        } catch (Exception e) {
+            Log.e("SearchFragment", "Error in navigateToArtistDetail: " + e.getMessage());
+        }
     }
 
     private void navigateToAlbumDetail(Album album) {
-        // Load songs for this album and navigate to AlbumSongsFragment
-        FirestoreUtils.getSongsByAlbumId(album.getId(), new FirestoreUtils.FirestoreCallback<List<Song>>() {
-            @Override
-            public void onSuccess(List<Song> songs) {
-                if (songs != null && !songs.isEmpty()) {
-                    AlbumSongsFragment fragment = AlbumSongsFragment.newInstance(
-                            songs,
-                            album.getTitle(),
-                            album.getCoverUrl());
-
-                    // Navigate to album detail
-                    if (getActivity() instanceof MainActivity) {
-                        ((MainActivity) getActivity()).navigateToFragment(fragment, "album_detail");
-                    }
-                } else {
-                    Toast.makeText(getContext(), "Album trống", Toast.LENGTH_SHORT).show();
+        try {
+            if (album == null || album.getId() == null) {
+                if (getContext() != null) {
+                    Toast.makeText(getContext(), "Thông tin album không hợp lệ", Toast.LENGTH_SHORT).show();
                 }
+                return;
             }
 
-            @Override
-            public void onError(Exception e) {
-                Toast.makeText(getContext(), "Lỗi khi tải album", Toast.LENGTH_SHORT).show();
+            // Load songs for this album and navigate to AlbumSongsFragment
+            FirestoreUtils.getSongsByAlbumId(album.getId(), new FirestoreUtils.FirestoreCallback<List<Song>>() {
+                @Override
+                public void onSuccess(List<Song> songs) {
+                    try {
+                        if (getActivity() == null || !isAdded()) {
+                            return;
+                        }
+
+                        if (songs != null && !songs.isEmpty()) {
+                            AlbumSongsFragment fragment = AlbumSongsFragment.newInstance(
+                                    songs,
+                                    album.getTitle(),
+                                    album.getCoverUrl());
+
+                            // Navigate to album detail
+                            if (getActivity() instanceof MainActivity) {
+                                ((MainActivity) getActivity()).navigateToFragment(fragment, "album_detail");
+                            }
+                        } else {
+                            if (getContext() != null) {
+                                Toast.makeText(getContext(), "Album trống", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                    } catch (Exception e) {
+                        Log.e("SearchFragment", "Error in album navigation success: " + e.getMessage());
+                        if (getContext() != null) {
+                            Toast.makeText(getContext(), "Lỗi khi tải album", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                }
+
+                @Override
+                public void onError(Exception e) {
+                    try {
+                        Log.e("SearchFragment", "Error loading album songs: " + e.getMessage());
+                        if (getContext() != null) {
+                            Toast.makeText(getContext(), "Lỗi khi tải album", Toast.LENGTH_SHORT).show();
+                        }
+                    } catch (Exception ex) {
+                        Log.e("SearchFragment", "Error in album navigation error: " + ex.getMessage());
+                    }
+                }
+            });
+        } catch (Exception e) {
+            Log.e("SearchFragment", "Error in navigateToAlbumDetail: " + e.getMessage());
+            if (getContext() != null) {
+                Toast.makeText(getContext(), "Lỗi khi mở album", Toast.LENGTH_SHORT).show();
             }
-        });
+        }
     }
 
     private void navigateToPlaylistDetail(Playlist playlist) {
-        // Navigate to PlaylistSongsFragment
-        PlaylistSongsFragment fragment = PlaylistSongsFragment.newInstance(playlist);
+        try {
+            if (playlist == null) {
+                if (getContext() != null) {
+                    Toast.makeText(getContext(), "Thông tin playlist không hợp lệ", Toast.LENGTH_SHORT).show();
+                }
+                return;
+            }
 
-        // Navigate to playlist detail
-        if (getActivity() instanceof MainActivity) {
-            ((MainActivity) getActivity()).navigateToFragment(fragment, "playlist_detail");
+            // Navigate to PlaylistSongsFragment
+            PlaylistSongsFragment fragment = PlaylistSongsFragment.newInstance(playlist);
+
+            // Navigate to playlist detail
+            if (getActivity() instanceof MainActivity) {
+                ((MainActivity) getActivity()).navigateToFragment(fragment, "playlist_detail");
+            }
+        } catch (Exception e) {
+            Log.e("SearchFragment", "Error in navigateToPlaylistDetail: " + e.getMessage());
+            if (getContext() != null) {
+                Toast.makeText(getContext(), "Lỗi khi mở playlist", Toast.LENGTH_SHORT).show();
+            }
         }
     }
 }

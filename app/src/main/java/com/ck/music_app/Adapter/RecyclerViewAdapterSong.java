@@ -31,6 +31,11 @@ public class RecyclerViewAdapterSong extends RecyclerView.Adapter<RecyclerViewAd
         this.onSongClickListener = listener;
     }
 
+    public void updateSongList(List<Song> newSongList) {
+        this.songList = newSongList;
+        notifyDataSetChanged();
+    }
+
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -72,4 +77,4 @@ public class RecyclerViewAdapterSong extends RecyclerView.Adapter<RecyclerViewAd
             tvViewCount = itemView.findViewById(R.id.tvViewCount);
         }
     }
-} 
+}

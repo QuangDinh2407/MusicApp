@@ -11,6 +11,8 @@ import com.ck.music_app.MainFragment.HomeFragment;
 import com.ck.music_app.MainFragment.LibraryFragment;
 import com.ck.music_app.MainFragment.ProfileFragment;
 import com.ck.music_app.MainFragment.SearchFragment;
+import com.ck.music_app.MainFragment.HomeChildFragment.AlbumSongsFragment;
+import com.ck.music_app.MainFragment.HomeChildFragment.PlaylistSongsFragment;
 import com.ck.music_app.Model.Song;
 import com.ck.music_app.Services.MusicService;
 import com.ck.music_app.Viewpager.MainPagerAdapter;
@@ -136,7 +138,13 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        if (musicplayerFragment != null && playerContainer.getVisibility() == View.VISIBLE) {
+        // Check if there are fragments in back stack
+        if (getSupportFragmentManager().getBackStackEntryCount() > 0) {
+            // Show ViewPager and bottom navigation again
+            viewPager.setVisibility(View.VISIBLE);
+            bottomNavigationView.setVisibility(View.VISIBLE);
+            getSupportFragmentManager().popBackStack();
+        } else if (musicplayerFragment != null && playerContainer.getVisibility() == View.VISIBLE) {
             musicplayerFragment.minimize();
         } else {
             super.onBackPressed();
@@ -144,46 +152,103 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void playSong(List<Song> songList, int position) {
-        // Lưu danh sách bài hát và vị trí hiện tại
-        this.currentPlaylist = songList;
-        this.currentSongIndex = position;
-        this.currentSong = songList.get(position);
+        try {
+            // Validate input parameters
+            if (songList == null || songList.isEmpty()) {
+                Log.e(TAG, "Song list is null or empty");
+                Toast.makeText(this, "Danh sách bài hát trống", Toast.LENGTH_SHORT).show();
+                return;
+            }
 
-        // Hiển thị player
-        if (musicplayerFragment == null) {
-            musicplayerFragment = new MusicPlayerFragment();
-            getSupportFragmentManager()
-                    .beginTransaction()
-                    .replace(R.id.player_container, musicplayerFragment)
-                    .commit();
+            if (position < 0 || position >= songList.size()) {
+                Log.e(TAG, "Invalid position: " + position + ", list size: " + songList.size());
+                Toast.makeText(this, "Vị trí bài hát không hợp lệ", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            // Validate song data
+            Song selectedSong = songList.get(position);
+            if (selectedSong == null) {
+                Log.e(TAG, "Selected song is null");
+                Toast.makeText(this, "Thông tin bài hát không hợp lệ", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            // Lưu danh sách bài hát và vị trí hiện tại
+            this.currentPlaylist = new ArrayList<>(songList);
+            this.currentSongIndex = position;
+            this.currentSong = selectedSong;
+
+            // Hiển thị player
+            if (musicplayerFragment == null) {
+                try {
+                    musicplayerFragment = new MusicPlayerFragment();
+                    getSupportFragmentManager()
+                            .beginTransaction()
+                            .replace(R.id.player_container, musicplayerFragment)
+                            .commitAllowingStateLoss(); // Use commitAllowingStateLoss to prevent IllegalStateException
+                } catch (Exception e) {
+                    Log.e(TAG, "Error creating MusicPlayerFragment: " + e.getMessage(), e);
+                    Toast.makeText(this, "Lỗi khi tạo trình phát nhạc", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+            }
+
+            // Hiển thị container player
+            if (playerContainer != null) {
+                playerContainer.setVisibility(View.VISIBLE);
+            }
+
+            // Cập nhật danh sách bài hát trong player (với null check)
+            if (musicplayerFragment != null) {
+                try {
+                    musicplayerFragment.updateSongList(songList, position);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error updating song list in player: " + e.getMessage(), e);
+                    // Don't return here, still try to start the service
+                }
+            }
+
+            // Gửi intent để phát nhạc
+            try {
+                Intent intent = new Intent(this, MusicService.class);
+                intent.setAction(MusicService.ACTION_PLAY);
+                intent.putExtra("songList", new ArrayList<>(songList));
+                intent.putExtra("position", position);
+                startService(intent);
+            } catch (Exception e) {
+                Log.e(TAG, "Error starting MusicService: " + e.getMessage(), e);
+                Toast.makeText(this, "Lỗi khi bắt đầu phát nhạc", Toast.LENGTH_SHORT).show();
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "Unexpected error in playSong: " + e.getMessage(), e);
+            Toast.makeText(this, "Lỗi không mong muốn khi phát nhạc", Toast.LENGTH_SHORT).show();
         }
-
-        // Hiển thị container player
-        playerContainer.setVisibility(View.VISIBLE);
-
-        // Cập nhật danh sách bài hát trong player
-        musicplayerFragment.updateSongList(songList, position);
-
-        // Gửi intent để phát nhạc
-        Intent intent = new Intent(this, MusicService.class);
-        intent.setAction(MusicService.ACTION_PLAY);
-        intent.putExtra("songList", new ArrayList<>(songList));
-        intent.putExtra("position", position);
-        startService(intent);
     }
 
     /**
      * Method to navigate to different fragments from search results
      */
     public void navigateToFragment(Fragment fragment, String backStackName) {
-        getSupportFragmentManager().beginTransaction()
-                .setCustomAnimations(
-                        R.anim.slide_in_left,
-                        R.anim.slide_out_left,
-                        R.anim.slide_in_right,
-                        R.anim.slide_out_right)
-                .add(R.id.fragment_container, fragment)
-                .addToBackStack(backStackName)
-                .commit();
+        try {
+            // Hide the ViewPager and show fragment in fragment_container
+            viewPager.setVisibility(View.GONE);
+            bottomNavigationView.setVisibility(View.GONE);
+
+            getSupportFragmentManager().beginTransaction()
+                    .setCustomAnimations(
+                            R.anim.slide_in_left,
+                            R.anim.slide_out_left,
+                            R.anim.slide_in_right,
+                            R.anim.slide_out_right)
+                    .replace(R.id.fragment_container, fragment)
+                    .addToBackStack(backStackName)
+                    .commit();
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error navigating to fragment: " + e.getMessage());
+            Toast.makeText(this, "Lỗi khi mở trang: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
     }
 }

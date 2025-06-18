@@ -34,6 +34,11 @@ public class SearchPlaylistAdapter extends RecyclerView.Adapter<SearchPlaylistAd
         this.listener = listener;
     }
 
+    public void updatePlaylistList(List<Playlist> newPlaylistList) {
+        this.playlistList = newPlaylistList;
+        notifyDataSetChanged();
+    }
+
     @NonNull
     @Override
     public PlaylistViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {

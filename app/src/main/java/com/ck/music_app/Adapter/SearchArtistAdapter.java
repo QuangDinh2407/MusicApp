@@ -34,6 +34,11 @@ public class SearchArtistAdapter extends RecyclerView.Adapter<SearchArtistAdapte
         this.listener = listener;
     }
 
+    public void updateArtistList(List<Artist> newArtistList) {
+        this.artistList = newArtistList;
+        notifyDataSetChanged();
+    }
+
     @NonNull
     @Override
     public ArtistViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {

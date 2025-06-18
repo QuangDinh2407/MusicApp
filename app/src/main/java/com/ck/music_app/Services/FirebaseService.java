@@ -23,10 +23,6 @@ public class FirebaseService {
     private final FirebaseFirestore db;
 
     private FirebaseService() {
-    }
-
-
-    private FirebaseService() {
         mAuth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
     }
