@@ -391,9 +391,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * Method to navigate to different fragments from search results
-     */
+   
     public void navigateToFragment(Fragment fragment, String backStackName) {
         try {
             // Hide the ViewPager and show fragment in fragment_container
