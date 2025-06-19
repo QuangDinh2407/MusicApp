@@ -157,7 +157,6 @@
                 android:layout_height="48dp"
                 android:src="@drawable/ic_skip_next_white_36dp"
                 android:background="@android:color/transparent"/>
-        </LinearLayout>
 
             <ImageButton
                 android:id="@+id/btnRepeat"
@@ -168,6 +167,10 @@
                 android:layout_marginStart="24dp"
                 android:padding="2dp"
                 app:tint="@color/player_button_color" />
+
+        </LinearLayout>
+
+
         </LinearLayout>
 
     <!-- Container cho view download -->

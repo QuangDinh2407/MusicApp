@@ -1,5 +1,6 @@
 package com.ck.music_app.MainFragment;
 
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
@@ -36,6 +37,7 @@ import com.ck.music_app.Model.SearchResult;
 import com.ck.music_app.Model.Song;
 import com.ck.music_app.R;
 import com.ck.music_app.Services.FirebaseService;
+import com.ck.music_app.Services.MusicService;
 import com.ck.music_app.interfaces.OnSongClickListener;
 import com.ck.music_app.utils.FirestoreUtils;
 import com.google.android.material.chip.Chip;
@@ -158,6 +160,20 @@ public class SearchFragment extends Fragment
         savePreviousQueryToHistory();
     }
 
+    @Override
+    public void onResume() {
+        super.onResume();
+        // Kiểm tra nếu không có fragment con nào trong stack
+        if (getChildFragmentManager().getBackStackEntryCount() == 0) {
+            View mainContent = getView().findViewById(R.id.mainSearchContent);
+            View container = getView().findViewById(R.id.albumSongsContainer);
+            if (mainContent != null && container != null) {
+                mainContent.setVisibility(View.VISIBLE);
+                container.setVisibility(View.GONE);
+            }
+        }
+    }
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
@@ -240,8 +256,7 @@ public class SearchFragment extends Fragment
             // Albums RecyclerView
             albumAdapter = new SearchAlbumAdapter(getContext(), new ArrayList<>());
             albumAdapter.setOnAlbumClickListener(this);
-            recyclerViewAlbums
-                    .setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
+            recyclerViewAlbums.setLayoutManager(new LinearLayoutManager(getContext()));
             recyclerViewAlbums.setAdapter(albumAdapter);
 
             // Playlists RecyclerView
@@ -575,7 +590,19 @@ public class SearchFragment extends Fragment
 
                         // Create single song list and play
                         List<Song> singleSong = Arrays.asList(song);
-                        ((MainActivity) getActivity()).playSong(singleSong, 0);
+//                        ((MainActivity) getActivity()).playSong(singleSong, 0);
+
+                        // Gửi intent đến Service để phát nhạc
+                        Intent intent = new Intent(requireContext(), MusicService.class);
+                        intent.setAction(MusicService.ACTION_PLAY);
+                        intent.putExtra("songList", new ArrayList<>(singleSong));
+                        intent.putExtra("position", 0);
+                        requireContext().startService(intent);
+
+                        // Hiển thị player fragment
+                        if (getActivity() instanceof MainActivity) {
+                            ((MainActivity) getActivity()).showPlayer(singleSong, 0, "");
+                        }
 
                     } catch (Exception e) {
                         Log.e("SearchFragment", "Error playing top result song: " + e.getMessage(), e);
@@ -908,8 +935,18 @@ public class SearchFragment extends Fragment
                 return;
             }
 
-            // Play song with additional safety
-            ((MainActivity) getActivity()).playSong(songList, position);
+
+            // Gửi intent đến Service để phát nhạc
+            Intent intent = new Intent(requireContext(), MusicService.class);
+            intent.setAction(MusicService.ACTION_PLAY);
+            intent.putExtra("songList", new ArrayList<>(songList));
+            intent.putExtra("position", 0);
+            requireContext().startService(intent);
+
+            // Hiển thị player fragment
+            if (getActivity() instanceof MainActivity) {
+                ((MainActivity) getActivity()).showPlayer(songList, position, "");
+            }
 
         } catch (Exception e) {
             Log.e("SearchFragment", "Error playing song: " + e.getMessage(), e);
@@ -1020,49 +1057,83 @@ public class SearchFragment extends Fragment
                 }
                 return;
             }
+            final String[] artistName = new String[1];
+            FirebaseService.getInstance().getArtistNameById(album.getArtistId(), new FirebaseService.FirestoreCallback<String>() {
+                @Override
+                public void onSuccess(String result) {
+                    artistName[0] = result;
+                }
 
-            // Load songs for this album and navigate to AlbumSongsFragment
+                @Override
+                public void onError(Exception e) {
+                    artistName[0] = "Unknown Artist";
+                }
+            });
             FirestoreUtils.getSongsByAlbumId(album.getId(), new FirestoreUtils.FirestoreCallback<List<Song>>() {
                 @Override
                 public void onSuccess(List<Song> songs) {
+                    if (!isAdded() || getContext() == null) return;
+
                     try {
-                        if (getActivity() == null || !isAdded()) {
-                            return;
+                        AlbumSongsFragment fragment = AlbumSongsFragment.newInstance(
+                                songs,
+                                album.getTitle(),
+                                album.getCoverUrl(),
+                                artistName[0]
+                        );
+
+                        // Add callback để xử lý khi fragment bị remove
+                        fragment.setOnFragmentDismissListener(() -> {
+                            try {
+                                if (isAdded() && getView() != null) {
+                                    View mainContent = getView().findViewById(R.id.mainSearchContent);
+                                    View container = getView().findViewById(R.id.albumSongsContainer);
+                                    if (mainContent != null && container != null) {
+                                        mainContent.setVisibility(View.VISIBLE);
+                                        container.setVisibility(View.GONE);
+                                    }
+                                }
+                            } catch (Exception e) {
+                                Log.e("SearchFragment", "Error in dismiss listener: " + e.getMessage());
+                            }
+                        });
+
+                        // Ẩn main content và hiện container
+                        View mainContent = requireView().findViewById(R.id.mainSearchContent);
+                        View container = requireView().findViewById(R.id.albumSongsContainer);
+                        if (mainContent != null && container != null) {
+                            mainContent.setVisibility(View.GONE);
+                            container.setVisibility(View.VISIBLE);
                         }
 
-                        if (songs != null && !songs.isEmpty()) {
-                            AlbumSongsFragment fragment = AlbumSongsFragment.newInstance(
-                                    songs,
-                                    album.getTitle(),
-                                    album.getCoverUrl());
-
-                            // Navigate to album detail
-                            if (getActivity() instanceof MainActivity) {
-                                ((MainActivity) getActivity()).navigateToFragment(fragment, "album_detail");
-                            }
-                        } else {
-                            if (getContext() != null) {
-                                Toast.makeText(getContext(), "Album trống", Toast.LENGTH_SHORT).show();
-                            }
+                        // Thực hiện transaction để thêm fragment mới
+                        if (isAdded() && getChildFragmentManager() != null) {
+                            getChildFragmentManager().beginTransaction()
+                                    .setCustomAnimations(
+                                            R.anim.slide_in_right,
+                                            R.anim.slide_out_right,
+                                            R.anim.slide_in_right,
+                                            R.anim.slide_out_right
+                                    )
+                                    .replace(R.id.albumSongsContainer, fragment)
+                                    .addToBackStack(null)
+                                    .commit();
                         }
                     } catch (Exception e) {
-                        Log.e("SearchFragment", "Error in album navigation success: " + e.getMessage());
+                        Log.e("SearchFragment", "Error in onSuccess: " + e.getMessage());
                         if (getContext() != null) {
-                            Toast.makeText(getContext(), "Lỗi khi tải album", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(getContext(), "Lỗi khi hiển thị album: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                         }
                     }
                 }
 
                 @Override
                 public void onError(Exception e) {
-                    try {
-                        Log.e("SearchFragment", "Error loading album songs: " + e.getMessage());
-                        if (getContext() != null) {
-                            Toast.makeText(getContext(), "Lỗi khi tải album", Toast.LENGTH_SHORT).show();
-                        }
-                    } catch (Exception ex) {
-                        Log.e("SearchFragment", "Error in album navigation error: " + ex.getMessage());
-                    }
+                    if (!isAdded() || getContext() == null) return;
+
+                    Toast.makeText(requireContext(),
+                            "Lỗi khi tải danh sách bài hát: " + e.getMessage(),
+                            Toast.LENGTH_SHORT).show();
                 }
             });
         } catch (Exception e) {

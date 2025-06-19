@@ -7,6 +7,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ListView;
+import android.util.Log;
 
 import com.ck.music_app.Adapter.ArtistAlbumAdapter;
 import com.ck.music_app.MainFragment.HomeChildFragment.AlbumSongsFragment;
@@ -22,9 +23,11 @@ import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class HomeFragment extends Fragment {
 
+    private static final String TAG = "HomeFragment";
     private ListView listViewArtists;
     private View homeFragmentContainer;
     private List<ArtistWithAlbums> artistWithAlbumsList = new ArrayList<>();
@@ -55,6 +58,8 @@ public class HomeFragment extends Fragment {
             FirestoreUtils.getSongsByAlbumId(album.getId(), new FirestoreUtils.FirestoreCallback<List<Song>>() {
                 @Override
                 public void onSuccess(List<Song> songs) {
+                    if (!isAdded()) return;
+
                     // Tạo và hiển thị AlbumSongsFragment với danh sách bài hát
                     AlbumSongsFragment albumSongsFragment = AlbumSongsFragment.newInstance(
                         songs,
@@ -65,8 +70,10 @@ public class HomeFragment extends Fragment {
 
                     // Thêm callback để xử lý khi fragment bị remove
                     albumSongsFragment.setOnFragmentDismissListener(() -> {
-                        listViewArtists.setVisibility(View.VISIBLE);
-                        homeFragmentContainer.setVisibility(View.GONE);
+                        if (isAdded()) {
+                            listViewArtists.setVisibility(View.VISIBLE);
+                            homeFragmentContainer.setVisibility(View.GONE);
+                        }
                     });
 
                     // Thực hiện transaction để thay thế fragment hiện tại bằng AlbumSongsFragment
@@ -91,35 +98,73 @@ public class HomeFragment extends Fragment {
 
                 @Override
                 public void onError(Exception e) {
-                    // Xử lý lỗi nếu cần
+                    if (isAdded() && getContext() != null) {
+                        Log.e(TAG, "Error loading songs: " + e.getMessage());
+                    }
                 }
             });
         });
-
-        loadArtistsAndAlbums();
 
         return view;
     }
 
     private void loadArtistsAndAlbums() {
         FirebaseFirestore db = FirebaseFirestore.getInstance();
+        
+        // Clear list before loading new data
+        artistWithAlbumsList.clear();
+        artistAlbumAdapter.notifyDataSetChanged();
+
         db.collection("artists").get().addOnSuccessListener(artistSnapshots -> {
-            artistWithAlbumsList.clear();
+            if (!isAdded()) return;
+
+            List<Artist> artists = new ArrayList<>();
             for (QueryDocumentSnapshot artistDoc : artistSnapshots) {
                 Artist artist = artistDoc.toObject(Artist.class);
                 artist.setId(artistDoc.getId());
+                artists.add(artist);
+            }
 
+            // Sử dụng AtomicInteger để theo dõi số lượng artist đã được xử lý
+            AtomicInteger processedArtists = new AtomicInteger(0);
+            int totalArtists = artists.size();
+
+            for (Artist artist : artists) {
                 // Lấy album của nghệ sĩ này
-                db.collection("albums").whereEqualTo("artistId", artist.getId()).get().addOnSuccessListener(albumSnapshots -> {
-                    List<Album> albums = new ArrayList<>();
-                    for (QueryDocumentSnapshot albumDoc : albumSnapshots) {
-                        Album album = albumDoc.toObject(Album.class);
-                        album.setId(albumDoc.getId());
-                        albums.add(album);
-                    }
-                    artistWithAlbumsList.add(new ArtistWithAlbums(artist, albums));
-                    artistAlbumAdapter.notifyDataSetChanged();
-                });
+                db.collection("albums")
+                    .whereEqualTo("artistId", artist.getId())
+                    .get()
+                    .addOnSuccessListener(albumSnapshots -> {
+                        if (!isAdded()) return;
+
+                        List<Album> albums = new ArrayList<>();
+                        for (QueryDocumentSnapshot albumDoc : albumSnapshots) {
+                            Album album = albumDoc.toObject(Album.class);
+                            album.setId(albumDoc.getId());
+                            albums.add(album);
+                        }
+
+                        // Thêm nghệ sĩ và album vào list
+                        artistWithAlbumsList.add(new ArtistWithAlbums(artist, albums));
+
+                        // Kiểm tra nếu đã xử lý hết tất cả nghệ sĩ
+                        if (processedArtists.incrementAndGet() == totalArtists) {
+                            artistAlbumAdapter.notifyDataSetChanged();
+                        }
+                    })
+                    .addOnFailureListener(e -> {
+                        if (isAdded() && getContext() != null) {
+                            Log.e(TAG, "Error loading albums for artist " + artist.getName() + ": " + e.getMessage());
+                        }
+                        // Vẫn tăng counter ngay cả khi thất bại để không bị treo
+                        if (processedArtists.incrementAndGet() == totalArtists) {
+                            artistAlbumAdapter.notifyDataSetChanged();
+                        }
+                    });
+            }
+        }).addOnFailureListener(e -> {
+            if (isAdded() && getContext() != null) {
+                Log.e(TAG, "Error loading artists: " + e.getMessage());
             }
         });
     }

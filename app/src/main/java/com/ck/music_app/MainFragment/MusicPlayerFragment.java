@@ -198,7 +198,7 @@ public class MusicPlayerFragment extends Fragment {
         });
 
         // Lấy bài hát hiện tại từ service để cập nhật UI
-        Song currentSong = MusicService.getCurrentSong();
+        Song currentSong = MusicService.getCurrentSongStatic();
         if (currentSong != null) {
             updateMiniPlayer(currentSong);
         }
@@ -450,7 +450,7 @@ public class MusicPlayerFragment extends Fragment {
     }
 
     private void updateCurrentSong() {
-        Song currentSong = MusicService.getCurrentSong();
+        Song currentSong = MusicService.getCurrentSongStatic();
         if (currentSong != null) {
             updateMiniPlayer(currentSong);
         }
@@ -773,7 +773,7 @@ public class MusicPlayerFragment extends Fragment {
         songList = new ArrayList<>(newSongList);
         currentIndex = newIndex;
         // Cập nhật UI cho bài hát hiện tại nếu cần
-        Song currentSong = MusicService.getCurrentSong();
+        Song currentSong = MusicService.getCurrentSongStatic();
         if (currentSong != null) {
             updateMiniPlayer(currentSong);
         }

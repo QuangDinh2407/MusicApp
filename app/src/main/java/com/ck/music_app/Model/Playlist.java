@@ -12,6 +12,8 @@ public class Playlist implements Serializable {
     private String lastAccessedAt;
     private List<String> songIds;
 
+    private String userId;
+
     public Playlist() {
         // Empty constructor needed for Firestore
         songIds = new ArrayList<>();
@@ -24,6 +26,16 @@ public class Playlist implements Serializable {
         this.coverUrl = coverUrl;
         this.createdAt = createdAt;
         this.lastAccessedAt = createdAt;
+    }
+
+    public Playlist(String id, String name, String coverUrl, String createdAt, String lastAccessedAt, List<String> songIds, String userId) {
+        this.id = id;
+        this.name = name;
+        this.coverUrl = coverUrl;
+        this.createdAt = createdAt;
+        this.lastAccessedAt = lastAccessedAt;
+        this.songIds = songIds;
+        this.userId = userId;
     }
 
     public String getId() {
@@ -75,5 +87,13 @@ public class Playlist implements Serializable {
 
     public void setLastAccessedAt(String lastAccessedAt) {
         this.lastAccessedAt = lastAccessedAt;
+    }
+
+    public String getUserId() {
+        return userId;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = userId;
     }
 }

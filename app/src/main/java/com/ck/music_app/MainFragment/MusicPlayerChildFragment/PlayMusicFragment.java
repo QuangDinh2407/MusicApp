@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -378,9 +379,9 @@ public class PlayMusicFragment extends Fragment {
 
     private void updateCurrentSong(int position) {
         currentIndex = position;
-        // Sử dụng songList local thay vì lấy từ service
-        if (songList != null && position >= 0 && position < songList.size()) {
-            Song song = songList.get(position);
+        List<Song> currentPlaylist = MusicService.getCurrentPlaylist();
+        if (currentPlaylist != null && position < currentPlaylist.size()) {
+            Song song = currentPlaylist.get(position);
             updateUI(song);
 
             // Broadcast song info update
@@ -390,8 +391,7 @@ public class PlayMusicFragment extends Fragment {
             if (coverUrl != null && !coverUrl.isEmpty()) {
                 intent.putExtra("COVER_URL", coverUrl);
             } else {
-                String defaultCover = "android.resource://" + requireContext().getPackageName()
-                        + "/mipmap/ic_launcher_new";
+                String defaultCover = "android.resource://" + requireContext().getPackageName() + "/mipmap/ic_launcher_new";
                 intent.putExtra("COVER_URL", defaultCover);
             }
 
@@ -518,27 +518,6 @@ public class PlayMusicFragment extends Fragment {
         }
     }
 
-    private void handleAddToPlaylist() {
-        // Lấy thông tin bài hát hiện tại
-        Song currentSong = MusicService.getCurrentSong();
-        if (currentSong == null) {
-            Toast.makeText(getContext(), "Không có bài hát nào đang phát", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        showAddToPlaylistDialog();
-    }
-
-    private void handleAddToPlaylist() {
-        // Lấy thông tin bài hát hiện tại
-        Song currentSong = MusicService.getCurrentSong();
-        if (currentSong == null) {
-            Toast.makeText(getContext(), "Không có bài hát nào đang phát", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        showAddToPlaylistDialog();
-    }
 
     private void handleDownload() {
         // Lấy thông tin bài hát hiện tại
@@ -558,7 +537,7 @@ public class PlayMusicFragment extends Fragment {
 
     private void showAddToPlaylistDialog() {
         // Get current song
-        Song currentSong = MusicService.getCurrentSong();
+        Song currentSong = MusicService.getCurrentSongStatic();
         if (currentSong == null) {
             Toast.makeText(getContext(), "Không có bài hát nào đang phát", Toast.LENGTH_SHORT).show();
             return;
