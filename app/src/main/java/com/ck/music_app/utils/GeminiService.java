@@ -16,26 +16,29 @@ import java.util.concurrent.Executors;
 
 public class GeminiService {
     private static final String TAG = "GeminiService";
-    private static final String API_KEY = "AIzaSyDEgWFtoagGB-F5lwAPpw751IRFlaEoljU";
+    private static final String API_KEY = "AIzaSyAoeRddVfm6laa-vX3SkyUfo-XgltlKy7M";
     
     private GenerativeModelFutures model;
     private Executor executor;
     
+    //Khi gửi yêu cầu đến AI, chương trình không chờ kết quả mà tiếp tục chạy, có kết quả hiển thị ra sau
     public interface GeminiCallback {
         void onSuccess(String response);
         void onError(String error);
     }
-    
+
+    //Tạo service làm việc với API
     public GeminiService() {
-        // Khởi tạo Gemini model
+        // Khởi tạo Gemini model với model mới
         GenerativeModel gm = new GenerativeModel(
-            "gemini-pro", 
+            "gemini-2.0-flash",  // Sử dụng model flash thay vì pro
             API_KEY
         );
         model = GenerativeModelFutures.from(gm);
         executor = Executors.newSingleThreadExecutor();
     }
-    
+
+    //Gửi request
     public void getTrendingSongs(String country, GeminiCallback callback) {
         try {
             Log.d(TAG, "Starting Gemini request for country: " + country);
@@ -53,8 +56,13 @@ public class GeminiService {
                 public void onSuccess(GenerateContentResponse result) {
                     try {
                         String responseText = result.getText();
-                        Log.d(TAG, "Gemini response received: " + responseText);
-                        callback.onSuccess(responseText);
+                        Log.d(TAG, "Raw Gemini response: " + responseText);
+                        
+                        // Tìm và trích xuất phần JSON từ response
+                        String jsonStr = extractJsonFromResponse(responseText);
+                        Log.d(TAG, "Extracted JSON: " + jsonStr);
+                        
+                        callback.onSuccess(jsonStr);
                     } catch (Exception e) {
                         Log.e(TAG, "Error processing response: " + e.getMessage());
                         callback.onError("Error processing response: " + e.getMessage());
@@ -76,18 +84,30 @@ public class GeminiService {
         }
     }
     
+    private String extractJsonFromResponse(String response) {
+        // Tìm vị trí bắt đầu của JSON (ký tự '{')
+        int startIndex = response.indexOf("{");
+        // Tìm vị trí kết thúc của JSON (ký tự '}' cuối cùng)
+        int endIndex = response.lastIndexOf("}") + 1;
+        
+        if (startIndex != -1 && endIndex != -1 && endIndex > startIndex) {
+            return response.substring(startIndex, endIndex);
+        }
+        
+        throw new IllegalArgumentException("Không tìm thấy JSON hợp lệ trong response");
+    }
+    
     private String createTrendingSongsPrompt(String country) {
-        return "Hãy đưa ra danh sách 8 bài hát thịnh hành nhất hiện tại của " + country + 
-               ". Vui lòng trả về theo định dạng JSON với cấu trúc sau:\n" +
+        return "Hãy liệt kê 8 bài hát đang thịnh hành nhất ở " + country + " hiện nay. " +
+               "QUAN TRỌNG: CHỈ trả về JSON, không có text giải thích nào khác:\n" +
                "{\n" +
                "  \"songs\": [\n" +
                "    {\n" +
                "      \"title\": \"Tên bài hát\",\n" +
                "      \"artist\": \"Tên ca sĩ\",\n" +
-               "      \"rank\": 1\n" +
+               "      \"rank\": số thứ tự từ 1-8\n" +
                "    }\n" +
                "  ]\n" +
-               "}\n" +
-               "Chỉ trả về JSON, không cần giải thích thêm.";
+               "}";
     }
 } 

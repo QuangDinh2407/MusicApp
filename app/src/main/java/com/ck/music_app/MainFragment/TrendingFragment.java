@@ -126,6 +126,13 @@ public class TrendingFragment extends Fragment {
 
     private void loadGeminiTrendingSongs(String country) {
         Log.d("TrendingFragment", "Loading Gemini trending songs for: " + country);
+        // Hiển thị loading
+        if (getActivity() != null) {
+            getActivity().runOnUiThread(() -> {
+                progressBarTrending.setVisibility(View.VISIBLE);
+                Toast.makeText(getContext(), "Đang tải bài hát thịnh hành...", Toast.LENGTH_SHORT).show();
+            });
+        }
         
         geminiService.getTrendingSongs(country, new GeminiService.GeminiCallback() {
             @Override
@@ -133,6 +140,8 @@ public class TrendingFragment extends Fragment {
                 Log.d("TrendingFragment", "Gemini response received: " + response);
                 if (getActivity() != null) {
                     getActivity().runOnUiThread(() -> {
+                        progressBarTrending.setVisibility(View.GONE);
+                        Toast.makeText(getContext(), "Đã nhận dữ liệu từ Gemini!", Toast.LENGTH_SHORT).show();
                         parseAndDisplayGeminiResponse(response);
                     });
                 }
@@ -143,6 +152,8 @@ public class TrendingFragment extends Fragment {
                 Log.e("TrendingFragment", "Gemini error: " + error);
                 if (getActivity() != null) {
                     getActivity().runOnUiThread(() -> {
+                        progressBarTrending.setVisibility(View.GONE);
+                        Toast.makeText(getContext(), "Lỗi: " + error, Toast.LENGTH_LONG).show();
                         // Hiển thị sample data khi Gemini API lỗi
                         showSampleData(country);
                     });
@@ -153,10 +164,13 @@ public class TrendingFragment extends Fragment {
 
     private void parseAndDisplayGeminiResponse(String response) {
         try {
-            // Parse JSON response từ Gemini
+            Log.d("TrendingFragment", "Raw Gemini response: " + response);
             JSONObject jsonResponse = new JSONObject(response);
             JSONArray songsArray = jsonResponse.getJSONArray("songs");
             
+            Log.d("TrendingFragment", "Found " + songsArray.length() + " songs in response");
+            
+            // Xóa danh sách cũ trước khi thêm mới
             geminiTrendingSongs.clear();
             
             for (int i = 0; i < songsArray.length(); i++) {
@@ -165,15 +179,38 @@ public class TrendingFragment extends Fragment {
                 String artist = songObj.getString("artist");
                 int rank = songObj.getInt("rank");
                 
-                geminiTrendingSongs.add(new TrendingSong(title, artist, rank));
+                TrendingSong song = new TrendingSong(title, artist, rank);
+                geminiTrendingSongs.add(song);
+                Log.d("TrendingFragment", "Added song: " + title + " by " + artist + " rank " + rank);
             }
             
-            Log.d("TrendingFragment", "Parsed " + geminiTrendingSongs.size() + " songs from Gemini");
-            geminiAdapter.notifyDataSetChanged();
+            Log.d("TrendingFragment", "Total songs in list: " + geminiTrendingSongs.size());
+            
+            // Kiểm tra xem adapter có null không
+            if (geminiAdapter != null) {
+                Log.d("TrendingFragment", "Notifying adapter to update");
+                getActivity().runOnUiThread(() -> {
+                    geminiAdapter.notifyDataSetChanged();
+                    // Hiển thị Toast với số lượng bài hát đã load
+                    Toast.makeText(getContext(), 
+                        "Đã load " + geminiTrendingSongs.size() + " bài hát từ Gemini", 
+                        Toast.LENGTH_SHORT).show();
+                });
+            } else {
+                Log.e("TrendingFragment", "Adapter is null!");
+            }
             
         } catch (JSONException e) {
-            Log.e("TrendingFragment", "Error parsing Gemini response", e);
-            // Fallback to sample data
+            Log.e("TrendingFragment", "Error parsing Gemini response: " + e.getMessage());
+            e.printStackTrace();
+            // Hiển thị lỗi parse cho user biết trước khi fallback
+            if (getActivity() != null) {
+                getActivity().runOnUiThread(() -> {
+                    Toast.makeText(getContext(), 
+                        "Lỗi xử lý dữ liệu từ Gemini: " + e.getMessage(), 
+                        Toast.LENGTH_LONG).show();
+                });
+            }
             showSampleData("Việt Nam");
         }
     }
@@ -272,7 +309,7 @@ public class TrendingFragment extends Fragment {
                         Song song = document.toObject(Song.class);
                         song.setSongId(document.getId());
                         
-                                                 String songTitle = song.getTitle().toLowerCase();
+                         String songTitle = song.getTitle().toLowerCase();
                          String songArtistId = song.getArtistId() != null ? song.getArtistId().toLowerCase() : "";
                          String targetArtist = trendingSong.getArtist().toLowerCase();
                          
