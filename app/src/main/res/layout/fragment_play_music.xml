@@ -5,8 +5,6 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".MainFragment.MusicPlayerChildFragment.PlayMusicFragment">
-
-
     <LinearLayout
         android:id="@+id/full_player_layout"
         android:orientation="vertical"
@@ -14,8 +12,8 @@
         android:layout_height="match_parent"
         android:background="@android:color/transparent"
         android:layout_marginTop="30dp"
-        android:paddingHorizontal="16dp"
-        android:paddingTop="16dp">
+        android:padding="16dp"
+        android:paddingHorizontal="16dp">
 
         <FrameLayout
             android:layout_width="371dp"
@@ -42,7 +40,7 @@
                     android:background="@drawable/circle_border"
                     android:src="@drawable/test1"
                     android:scaleType="centerCrop"
-                    android:clipToOutline="true" />
+                    android:clipToOutline="true"/>
 
             </FrameLayout>
         </FrameLayout>
@@ -55,7 +53,7 @@
             android:textStyle="bold"
             android:textSize="20sp"
             android:layout_gravity="center_horizontal"
-            android:layout_marginTop="24dp" />
+            android:layout_marginTop="24dp"/>
 
         <TextView
             android:id="@+id/tvArtist"
@@ -64,7 +62,7 @@
             android:text="Nghệ sĩ"
             android:textSize="16sp"
             android:layout_gravity="center_horizontal"
-            android:layout_marginTop="4dp" />
+            android:layout_marginTop="4dp"/>
 
         <LinearLayout
             android:orientation="horizontal"
@@ -104,21 +102,21 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="00:00"
-                android:textSize="14sp" />
+                android:textSize="14sp"/>
 
             <SeekBar
                 android:id="@+id/seekBar"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginHorizontal="8dp" />
+                android:layout_marginHorizontal="8dp"/>
 
             <TextView
                 android:id="@+id/tvTotalTime"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="00:00"
-                android:textSize="14sp" />
+                android:textSize="14sp"/>
         </LinearLayout>
 
         <LinearLayout
@@ -126,7 +124,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center"
-            android:layout_marginTop="24dp">
+            android:layout_marginTop="32dp">
 
             <ImageButton
                 android:id="@+id/btnShuffle"
@@ -143,7 +141,7 @@
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:src="@drawable/ic_skip_previous_white_36dp"
-                android:background="@android:color/transparent" />
+                android:background="@android:color/transparent"/>
 
             <ImageButton
                 android:id="@+id/btnPlayPause"
@@ -151,14 +149,15 @@
                 android:layout_height="64dp"
                 android:src="@drawable/ic_play_white_36dp"
                 android:background="@android:color/transparent"
-                android:layout_marginHorizontal="16dp" />
+                android:layout_marginHorizontal="32dp"/>
 
             <ImageButton
                 android:id="@+id/btnNext"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:src="@drawable/ic_skip_next_white_36dp"
-                android:background="@android:color/transparent" />
+                android:background="@android:color/transparent"/>
+        </LinearLayout>
 
             <ImageButton
                 android:id="@+id/btnRepeat"
@@ -170,7 +169,6 @@
                 android:padding="2dp"
                 app:tint="@color/player_button_color" />
         </LinearLayout>
-    </LinearLayout>
 
     <!-- Container cho view download -->
     <FrameLayout
