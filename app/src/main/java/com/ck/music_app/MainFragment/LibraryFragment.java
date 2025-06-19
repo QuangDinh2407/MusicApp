@@ -1,27 +1,44 @@
 package com.ck.music_app.MainFragment;
 
+import android.content.Intent;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.ImageView;
+import android.widget.ListView;
 import android.widget.PopupMenu;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.viewpager2.widget.ViewPager2;
 
 import com.bumptech.glide.Glide;
 import com.ck.music_app.MainFragment.LibraryChildFragment.AlbumContentFragment;
 import com.ck.music_app.MainFragment.LibraryChildFragment.ArtistContentFragment;
 import com.ck.music_app.MainFragment.LibraryChildFragment.PlaylistContentFragment;
+import com.ck.music_app.Model.Album;
 import com.ck.music_app.R;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.imageview.ShapeableImageView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FieldValue;
+import com.google.firebase.firestore.FirebaseFirestore;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -33,7 +50,7 @@ public class LibraryFragment extends Fragment {
     private ViewPager2 viewPager;
     private ChipGroup chipGroupTabs;
     private Chip chipPlaylists, chipArtists, chipAlbums;
-    private ImageButton btnSearch, btnAdd, btnSort;
+    private ImageButton btnAdd, btnSort;
     private ShapeableImageView ivUserAvatar;
     private FirebaseAuth mAuth;
     private LibraryPagerAdapter pagerAdapter;
@@ -85,7 +102,6 @@ public class LibraryFragment extends Fragment {
         chipPlaylists = view.findViewById(R.id.chipPlaylists);
         chipArtists = view.findViewById(R.id.chipArtists);
         chipAlbums = view.findViewById(R.id.chipAlbums);
-        btnSearch = view.findViewById(R.id.btnSearch);
         btnAdd = view.findViewById(R.id.btnAdd);
         btnSort = view.findViewById(R.id.btnSort);
         ivUserAvatar = view.findViewById(R.id.imgAvatar);
@@ -160,10 +176,6 @@ public class LibraryFragment extends Fragment {
     }
 
     private void setupButtons() {
-        btnSearch.setOnClickListener(v -> {
-            // TODO: Implement search functionality
-            Toast.makeText(getContext(), "Tính năng tìm kiếm sẽ được triển khai sau", Toast.LENGTH_SHORT).show();
-        });
 
         btnAdd.setOnClickListener(v -> {
             FirebaseUser currentUser = mAuth.getCurrentUser();
@@ -178,7 +190,7 @@ public class LibraryFragment extends Fragment {
                     playlistFragment.showAddPlaylistDialog();
                 }
             } else if (currentPosition == 2) {
-                Toast.makeText(getContext(), "Chức năng thêm Album sẽ được triển khai sau", Toast.LENGTH_SHORT).show();
+                showAddAlbumsDialog();
             }
         });
     }
@@ -200,11 +212,6 @@ public class LibraryFragment extends Fragment {
             // TODO: Navigate to profile
         });
 
-        // Search click
-        btnSearch.setOnClickListener(v -> {
-            // TODO: Navigate to search
-        });
-
         // Add button visibility based on selected tab
         chipGroupTabs.setOnCheckedChangeListener((group, checkedId) -> {
             if (checkedId == R.id.chipPlaylists || checkedId == R.id.chipAlbums) {
@@ -221,14 +228,19 @@ public class LibraryFragment extends Fragment {
 
         // Add button click
         btnAdd.setOnClickListener(v -> {
+            FirebaseUser currentUser = mAuth.getCurrentUser();
+            if (currentUser == null) {
+                Toast.makeText(requireContext(), "Vui lòng đăng nhập để thêm nội dung", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
             int selectedChipId = chipGroupTabs.getCheckedChipId();
             if (selectedChipId == R.id.chipPlaylists) {
                 if (playlistFragment != null) {
                     playlistFragment.showAddPlaylistDialog();
                 }
             } else if (selectedChipId == R.id.chipAlbums) {
-                // TODO: Add new album
-                Toast.makeText(requireContext(), "Thêm album mới", Toast.LENGTH_SHORT).show();
+                showAddAlbumsDialog();
             }
         });
 
@@ -255,6 +267,214 @@ public class LibraryFragment extends Fragment {
             });
             popup.show();
         });
+    }
+
+    private void showAddAlbumsDialog() {
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        if (currentUser == null) {
+            Toast.makeText(getContext(), "Vui lòng đăng nhập để thêm album yêu thích", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+        // Query tất cả albums từ Firestore
+        db.collection("albums").get().addOnSuccessListener(queryDocumentSnapshots -> {
+            if (!isAdded() || getContext() == null) return;
+
+            List<Album> allAlbums = new ArrayList<>();
+            List<Album> filteredAlbums = new ArrayList<>();
+            List<Album> albumsToAdd = new ArrayList<>();
+
+            // Lấy danh sách album hiện tại của user để lọc
+            db.collection("users").document(currentUser.getUid()).get()
+                .addOnSuccessListener(userDoc -> {
+                    List<String> favoriteAlbumIds = (List<String>) userDoc.get("favoriteAlbumIds");
+                    if (favoriteAlbumIds == null) {
+                        favoriteAlbumIds = new ArrayList<>();
+                    }
+
+                    final List<String> currentFavoriteIds = favoriteAlbumIds;
+
+                    for (DocumentSnapshot document : queryDocumentSnapshots) {
+                        Album album = document.toObject(Album.class);
+                        if (album != null) {
+                            album.setId(document.getId());
+                            // Sử dụng album ID để so sánh, tránh trùng lặp
+                            if (!currentFavoriteIds.contains(album.getId())) {
+                                allAlbums.add(album);
+                                filteredAlbums.add(album);
+                            }
+                        }
+                    }
+
+                    if (allAlbums.isEmpty()) {
+                        Toast.makeText(getContext(), "Tất cả album đã có trong danh sách yêu thích", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    // Tạo AlertDialog với ListView custom
+                    AlertDialog.Builder builder = new AlertDialog.Builder(requireContext(), R.style.LightDialogTheme);
+                    View dialogView = getLayoutInflater().inflate(R.layout.dialog_add_albums, null);
+                    TextView tvSelectedCount = dialogView.findViewById(R.id.tvSelectedCount);
+                    EditText etSearchAlbums = dialogView.findViewById(R.id.etSearchAlbums);
+                    ListView listView = dialogView.findViewById(R.id.listViewAlbums);
+
+                    // Cập nhật số lượng album đã chọn
+                    tvSelectedCount.setText("Đã chọn: 0");
+
+                    // Tạo adapter cho ListView với layout tùy chỉnh
+                    ArrayAdapter<Album> adapter = new ArrayAdapter<Album>(requireContext(), 0, filteredAlbums) {
+                        @NonNull
+                        @Override
+                        public View getView(int position, View convertView, @NonNull ViewGroup parent) {
+                            if (convertView == null) {
+                                convertView = getLayoutInflater().inflate(R.layout.item_album_select, parent, false);
+                            }
+
+                            Album album = getItem(position);
+                            if (album != null) {
+                                ImageView imgAlbumCover = convertView.findViewById(R.id.imgAlbumCover);
+                                TextView tvAlbumTitle = convertView.findViewById(R.id.tvAlbumTitle);
+                                TextView tvArtistName = convertView.findViewById(R.id.tvArtistName);
+                                View selectedBackground = convertView.findViewById(R.id.selectedBackground);
+
+                                tvAlbumTitle.setText(album.getTitle());
+                                tvArtistName.setText(album.getArtistId());
+
+                                // Load ảnh album
+                                Glide.with(LibraryFragment.this)
+                                    .load(album.getCoverUrl())
+                                    .placeholder(R.drawable.love)
+                                    .error(R.drawable.love)
+                                    .into(imgAlbumCover);
+
+                                // Hiển thị background mờ nếu item được chọn
+                                selectedBackground.setVisibility(albumsToAdd.contains(album) ? View.VISIBLE : View.GONE);
+                            }
+
+                            return convertView;
+                        }
+                    };
+
+                    listView.setAdapter(adapter);
+
+                    // Xử lý sự kiện khi người dùng chọn/bỏ chọn album
+                    listView.setOnItemClickListener((parent, view, position, id) -> {
+                        Album album = filteredAlbums.get(position);
+                        View selectedBackground = view.findViewById(R.id.selectedBackground);
+
+                        if (albumsToAdd.contains(album)) {
+                            albumsToAdd.remove(album);
+                            selectedBackground.setVisibility(View.GONE);
+                        } else {
+                            albumsToAdd.add(album);
+                            selectedBackground.setVisibility(View.VISIBLE);
+                        }
+
+                        // Cập nhật số lượng album đã chọn
+                        tvSelectedCount.setText("Đã chọn: " + albumsToAdd.size());
+                    });
+
+                    // Xử lý sự kiện tìm kiếm
+                    etSearchAlbums.addTextChangedListener(new TextWatcher() {
+                        @Override
+                        public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+                        @Override
+                        public void onTextChanged(CharSequence s, int start, int before, int count) {
+                            String searchText = s.toString().toLowerCase().trim();
+                            filteredAlbums.clear();
+
+                            if (searchText.isEmpty()) {
+                                filteredAlbums.addAll(allAlbums);
+                            } else {
+                                for (Album album : allAlbums) {
+                                    if (album.getTitle().toLowerCase().contains(searchText) ||
+                                        album.getArtistId().toLowerCase().contains(searchText)) {
+                                        filteredAlbums.add(album);
+                                    }
+                                }
+                            }
+
+                            adapter.notifyDataSetChanged();
+                        }
+
+                        @Override
+                        public void afterTextChanged(Editable s) {}
+                    });
+
+                    builder.setView(dialogView);
+
+                    builder.setPositiveButton("Thêm", (dialog, which) -> {
+                        if (!albumsToAdd.isEmpty()) {
+                            addAlbumsToFavorites(albumsToAdd);
+                        }
+                    });
+
+                    builder.setNegativeButton("Hủy", null);
+
+                    AlertDialog dialog = builder.create();
+                    dialog.show();
+                })
+                .addOnFailureListener(e -> {
+                    if (isAdded() && getContext() != null) {
+                        Toast.makeText(getContext(), "Lỗi khi tải danh sách album yêu thích", Toast.LENGTH_SHORT).show();
+                    }
+                });
+        }).addOnFailureListener(e -> {
+            if (isAdded() && getContext() != null) {
+                Toast.makeText(getContext(), "Lỗi khi tải danh sách album", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void addAlbumsToFavorites(List<Album> albumsToAdd) {
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        if (currentUser == null || !isAdded() || getContext() == null) return;
+
+        List<String> albumIdsToAdd = new ArrayList<>();
+        List<String> albumNamesToAdd = new ArrayList<>();
+        for (Album album : albumsToAdd) {
+            albumIdsToAdd.add(album.getId());
+            albumNamesToAdd.add(album.getTitle());
+        }
+
+        // Cập nhật Firestore với cả ID và names để tương thích ngược
+        FirebaseFirestore.getInstance().collection("users").document(currentUser.getUid())
+            .update(
+                "favoriteAlbumIds", FieldValue.arrayUnion(albumIdsToAdd.toArray()),
+                "favoriteAlbums", FieldValue.arrayUnion(albumNamesToAdd.toArray())
+            )
+            .addOnSuccessListener(aVoid -> {
+                if (!isAdded() || getContext() == null) return;
+
+                // Gửi broadcast để cập nhật AlbumContentFragment
+                for (Album album : albumsToAdd) {
+                    Intent intent = new Intent("favorite_album_updated");
+                    intent.putExtra("albumName", album.getTitle());
+                    intent.putExtra("albumId", album.getId());
+                    intent.putExtra("isFavorite", true);
+                    intent.putExtra("coverUrl", album.getCoverUrl());
+                    LocalBroadcastManager.getInstance(requireContext()).sendBroadcast(intent);
+                }
+
+                Toast.makeText(getContext(),
+                    "Đã thêm " + albumsToAdd.size() + " album vào danh sách yêu thích",
+                    Toast.LENGTH_SHORT).show();
+
+                // Refresh album fragment if it's currently visible
+                if (viewPager.getCurrentItem() == 2 && albumFragment != null) {
+                    albumFragment.onResume();
+                }
+            })
+            .addOnFailureListener(e -> {
+                if (isAdded() && getContext() != null) {
+                    Toast.makeText(getContext(),
+                        "Lỗi khi thêm album: " + e.getMessage(),
+                        Toast.LENGTH_SHORT).show();
+                }
+            });
     }
 
     // Adapter for ViewPager2 - Xóa static
