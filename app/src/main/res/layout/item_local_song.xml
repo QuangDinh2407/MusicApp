@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:padding="16dp"
-    android:background="@color/FlatWhite">
+    android:background="@color/background">
 
     <FrameLayout
         android:id="@+id/iconContainer"
@@ -32,7 +32,7 @@
         android:layout_marginStart="12dp"
         android:layout_marginEnd="8dp"
         android:textSize="16sp"
-        android:textColor="#000000"
+        android:textColor="@color/textPrimary"
         android:maxLines="1"
         android:ellipsize="end"
         app:layout_constraintStart_toEndOf="@id/iconContainer"
@@ -47,7 +47,7 @@
         android:layout_marginStart="12dp"
         android:layout_marginEnd="8dp"
         android:textSize="14sp"
-        android:textColor="#666666"
+        android:textColor="@color/textSecondary"
         android:maxLines="1"
         android:ellipsize="end"
         app:layout_constraintStart_toEndOf="@id/iconContainer"
@@ -60,7 +60,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textSize="14sp"
-        android:textColor="#666666"
+        android:textColor="@color/textPrimary"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"/>

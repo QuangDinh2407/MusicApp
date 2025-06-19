@@ -31,6 +31,7 @@ public class MusicService extends Service {
     public static final String ACTION_NEXT = "com.ck.music_app.ACTION_NEXT";
     public static final String ACTION_STOP = "com.ck.music_app.ACTION_STOP";
     public static final String ACTION_SEEK = "com.ck.music_app.ACTION_SEEK";
+    public static final String ACTION_RESUME = "com.ck.music_app.ACTION_RESUME";
 
     public static final String ACTION_TOGGLE_SHUFFLE = "com.ck.music_app.action.TOGGLE_SHUFFLE";
     public static final String ACTION_TOGGLE_REPEAT = "com.ck.music_app.action.TOGGLE_REPEAT";
@@ -114,7 +115,23 @@ public class MusicService extends Service {
                             songList = new ArrayList<>(newSongList);
                             currentIndex = position;
                         }
-                        playSong(currentIndex);
+                        
+                        // Kiểm tra xem có phải bài hát hiện tại không
+                        boolean isSameSong = false;
+                        if (currentSong != null && currentIndex < songList.size()) {
+                            Song newSong = songList.get(currentIndex);
+                            if (currentSong.getSongId() != null && newSong.getSongId() != null) {
+                                isSameSong = currentSong.getSongId().equals(newSong.getSongId());
+                            }
+                        }
+                        
+                        if (isSameSong && mediaPlayer != null && !mediaPlayer.isPlaying()) {
+                            // Nếu là bài hát hiện tại và đang pause, chỉ cần resume
+                            resumeMusic();
+                        } else {
+                            // Nếu là bài hát khác hoặc không thể xác định, phát mới
+                            playSong(currentIndex);
+                        }
                     } else {
                         resumeMusic();
                     }
@@ -134,6 +151,9 @@ public class MusicService extends Service {
                 case ACTION_SEEK:
                     int position = intent.getIntExtra("position", 0);
                     seekTo(position);
+                case ACTION_RESUME:
+                    resumeMusic();
+                    break;
                 case ACTION_TOGGLE_SHUFFLE:
                     boolean isShuffleOn = intent.getBooleanExtra("isShuffleOn", false);
                     handleShuffleMode(isShuffleOn);

@@ -17,8 +17,8 @@ import androidx.fragment.app.Fragment;
 import androidx.appcompat.widget.Toolbar;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.ck.music_app.interfaces.OnSongClickListener;
 import com.google.android.material.appbar.CollapsingToolbarLayout;
@@ -274,6 +274,7 @@ public class AlbumSongsFragment extends Fragment implements OnSongClickListener 
             btnFavorite.setImageResource(R.drawable.ic_heart);
             btnFavorite.setColorFilter(getResources().getColor(android.R.color.white));
         }
+    }
     // Thêm helper method để blend màu
     private int blendColors(int from, int to, float ratio) {
         float inverseRatio = 1f - ratio;
