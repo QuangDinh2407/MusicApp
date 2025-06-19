@@ -5,6 +5,7 @@ import java.util.Date;
 import java.util.List;
 
 public class Song implements Serializable {
+    private String id;
     private String songId;
 
     private List<String> albumId;
@@ -28,6 +29,16 @@ public class Song implements Serializable {
     private Integer viewCount;
 
     private String lyrics;
+
+    private String artist;
+
+    private String genre;
+
+    private String album;
+
+    private String year;
+
+    private String imageUrl;
 
     public Song() {}
 
@@ -134,11 +145,82 @@ public class Song implements Serializable {
         this.viewCount = viewCount;
     }
 
+    // Method riêng để set viewCount từ Long
+    public void setViewCountFromLong(Long viewCount) {
+        this.viewCount = viewCount != null ? viewCount.intValue() : 0;
+    }
+
     public String getLyrics() {
         return lyrics;
     }
 
     public void setLyrics(String lyrics) {
         this.lyrics = lyrics;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public String getArtist() {
+        return artist;
+    }
+
+    public void setArtist(String artist) {
+        this.artist = artist;
+    }
+
+    public String getGenre() {
+        return genre;
+    }
+
+    public void setGenre(String genre) {
+        this.genre = genre;
+    }
+
+    public String getAlbum() {
+        return album;
+    }
+
+    public void setAlbum(String album) {
+        this.album = album;
+    }
+
+    public String getYear() {
+        return year;
+    }
+
+    public void setYear(String year) {
+        this.year = year;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
+    }
+
+    // Method riêng để set duration từ String format
+    public void setDurationFromString(String duration) {
+        // Chuyển đổi String duration thành Integer nếu cần
+        try {
+            if (duration != null && duration.contains(":")) {
+                // Format "mm:ss" -> chuyển thành seconds
+                String[] parts = duration.split(":");
+                int minutes = Integer.parseInt(parts[0]);
+                int seconds = Integer.parseInt(parts[1]);
+                this.duration = minutes * 60 + seconds;
+            } else if (duration != null) {
+                this.duration = Integer.parseInt(duration);
+            }
+        } catch (NumberFormatException e) {
+            this.duration = 0; // Default value
+        }
     }
 }

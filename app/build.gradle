@@ -77,4 +77,7 @@ dependencies {
 
 //    implementation 'jp.wasabeef:glide-transformations:4.3.0'
 
+    // Gemini AI SDK
+    implementation 'com.google.ai.client.generativeai:generativeai:0.2.2'
+
 }
