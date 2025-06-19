@@ -167,6 +167,10 @@ public class PlaylistContentFragment extends Fragment implements PlaylistAdapter
         chipRecent.setChecked(true);
         setupListeners();
 
+        // Xử lý sự kiện click cho nút tạo playlist đầu tiên
+        Button btnCreateFirstPlaylist = view.findViewById(R.id.btnCreateFirstPlaylist);
+        btnCreateFirstPlaylist.setOnClickListener(v -> showAddPlaylistDialog());
+
         return view;
     }
 
@@ -523,7 +527,7 @@ public class PlaylistContentFragment extends Fragment implements PlaylistAdapter
             return;
         }
 
-        showLoading();
+//        showLoading();
 
         // Clear existing playlists
         playlistList = new ArrayList<>();

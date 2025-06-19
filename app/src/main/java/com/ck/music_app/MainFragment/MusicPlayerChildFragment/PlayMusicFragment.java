@@ -31,8 +31,8 @@ import com.ck.music_app.R;
 import com.ck.music_app.Services.MusicService;
 import com.ck.music_app.utils.GradientUtils;
 import com.ck.music_app.utils.MusicUtils;
-import com.ck.music_app.Services.FirebaseService;
 import com.ck.music_app.utils.PlaylistDialogUtils;
+import com.ck.music_app.Services.FirebaseService;
 
 import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;

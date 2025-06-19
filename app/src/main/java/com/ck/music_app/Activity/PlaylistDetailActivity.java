@@ -43,6 +43,7 @@ import com.ck.music_app.MainFragment.MusicPlayerFragment;
 import com.ck.music_app.Model.Playlist;
 import com.ck.music_app.Model.Song;
 import com.ck.music_app.R;
+import com.ck.music_app.Services.FirebaseService;
 import com.ck.music_app.Services.MusicService;
 import com.google.android.material.button.MaterialButton;
 import com.google.firebase.auth.FirebaseAuth;
@@ -330,7 +331,20 @@ public class PlaylistDetailActivity extends AppCompatActivity implements Playlis
                         View selectedBackground = convertView.findViewById(R.id.selectedBackground);
 
                         tvSongTitle.setText(song.getTitle());
-                        tvArtistName.setText(song.getArtistId());
+                        // Lấy tên artist từ artistId
+                        FirebaseService.getInstance().getArtistNameById(song.getArtistId(), new FirebaseService.FirestoreCallback<String>() {
+                            @Override
+                            public void onSuccess(String artistName) {
+                                tvArtistName.setText(artistName);
+                            }
+
+                            @Override
+                            public void onError(Exception e) {
+                                // Nếu không lấy được tên artist, hiển thị "Unknown Artist"
+                                tvArtistName.setText("Unknown Artist");
+                                Log.e("PlaylistDetail", "Error getting artist name: " + e.getMessage());
+                            }
+                        });
                         
                         // Load ảnh bài hát
                         Glide.with(PlaylistDetailActivity.this)
