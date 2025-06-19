@@ -131,6 +131,9 @@ public class MusicPlayerFragment extends Fragment {
 
     private boolean shouldMinimizeOnCreate = false;
 
+    private static final int PERMISSION_REQUEST_CODE = 1001;
+    private Song pendingDownloadSong = null;
+
     public static MusicPlayerFragment newInstance(List<Song> songs, int currentIndex, String albumName, boolean shouldMinimize) {
         MusicPlayerFragment fragment = new MusicPlayerFragment();
         Bundle args = new Bundle();
@@ -639,13 +642,6 @@ public class MusicPlayerFragment extends Fragment {
             return;
         }
 
-        if (song == null || song.getAudioUrl() == null) {
-            if (getContext() != null) {
-                Toast.makeText(getContext(), "Không có bài hát nào đang phát", Toast.LENGTH_SHORT).show();
-            }
-            return;
-        }
-
         // Kiểm tra nếu URL bắt đầu bằng "content://" thì là bài hát local
         if (song.getAudioUrl().startsWith("content://")) {
             if (getContext() != null) {
@@ -654,66 +650,40 @@ public class MusicPlayerFragment extends Fragment {
             return;
         }
 
-        // Kiểm tra quyền truy cập bộ nhớ
+        // Kiểm tra quyền truy cập
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(requireContext(),
-                    Manifest.permission.READ_MEDIA_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[] { Manifest.permission.READ_MEDIA_AUDIO }, 1001);
+            String[] permissions = {
+                Manifest.permission.READ_MEDIA_AUDIO,
+                Manifest.permission.READ_MEDIA_IMAGES
+            };
+            boolean hasAllPermissions = true;
+            for (String permission : permissions) {
+                if (ContextCompat.checkSelfPermission(requireContext(), permission) 
+                        != PackageManager.PERMISSION_GRANTED) {
+                    hasAllPermissions = false;
+                    break;
+                }
+            }
+            if (!hasAllPermissions) {
+                pendingDownloadSong = song;  // Lưu bài hát đang chờ tải
+                requestPermissions(permissions, PERMISSION_REQUEST_CODE);
                 return;
             }
-        } else {
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            // Cho Android 10
             if (ContextCompat.checkSelfPermission(requireContext(),
                     Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[] { Manifest.permission.WRITE_EXTERNAL_STORAGE }, 1001);
+                pendingDownloadSong = song;  // Lưu bài hát đang chờ tải
+                requestPermissions(new String[] { 
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                    Manifest.permission.READ_EXTERNAL_STORAGE 
+                }, PERMISSION_REQUEST_CODE);
                 return;
             }
         }
 
-        // Bắt đầu tải xuống
-        isDownloading = true;
-        showDownloadProgress();
-
-        downloadThread = new Thread(() -> {
-            DownloadUtils.downloadSong(
-                    requireContext(),
-                    song.getAudioUrl(),
-                    song.getTitle(),
-                    song.getArtistId(),
-                    song.getCoverUrl(),
-                    song.getLyrics(),
-                    new DownloadUtils.DownloadCallback() {
-                        @Override
-                        public void onProgressUpdate(int progress) {
-                            if (Thread.currentThread().isInterrupted()) {
-                                throw new RuntimeException("Download cancelled");
-                            }
-                            requireActivity().runOnUiThread(() -> {
-                                progressBar.setProgress(progress);
-                                tvDownloadPercent.setText(progress + "%");
-                                tvDownloadTitle.setText("Đang tải: " + song.getTitle());
-                            });
-                        }
-
-                        @Override
-                        public void onDownloadComplete(String filePath) {
-                            requireActivity().runOnUiThread(() -> {
-                                hideDownloadProgress();
-                                Toast.makeText(getContext(), "Tải xuống thành công!", Toast.LENGTH_SHORT).show();
-                                isDownloading = false;
-                            });
-                        }
-
-                        @Override
-                        public void onError(String message) {
-                            requireActivity().runOnUiThread(() -> {
-                                hideDownloadProgress();
-                                Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
-                                isDownloading = false;
-                            });
-                        }
-                    });
-        });
-        downloadThread.start();
+        // Nếu đã có đủ quyền, bắt đầu tải
+        startDownload(song);
     }
 
     private void showDownloadProgress() {
@@ -777,5 +747,91 @@ public class MusicPlayerFragment extends Fragment {
         if (currentSong != null) {
             updateMiniPlayer(currentSong);
         }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        if (requestCode == PERMISSION_REQUEST_CODE) {
+            boolean allPermissionsGranted = true;
+            for (int result : grantResults) {
+                if (result != PackageManager.PERMISSION_GRANTED) {
+                    allPermissionsGranted = false;
+                    break;
+                }
+            }
+            
+            if (allPermissionsGranted && pendingDownloadSong != null) {
+                // Nếu được cấp quyền, tiếp tục tải xuống
+                startDownload(pendingDownloadSong);
+                pendingDownloadSong = null;
+            } else {
+                // Nếu không được cấp quyền, thông báo cho người dùng
+                Toast.makeText(getContext(), 
+                    "Cần cấp quyền truy cập để tải bài hát", 
+                    Toast.LENGTH_SHORT).show();
+                pendingDownloadSong = null;
+            }
+        }
+    }
+
+    private void startDownload(Song song) {
+        if (song == null || song.getAudioUrl() == null) {
+            if (getContext() != null) {
+                Toast.makeText(getContext(), "Không có bài hát nào đang phát", Toast.LENGTH_SHORT).show();
+            }
+            return;
+        }
+
+        isDownloading = true;
+        showDownloadProgress();
+
+        downloadThread = new Thread(() -> {
+            DownloadUtils.downloadSong(
+                    requireContext(),
+                    song.getAudioUrl(),
+                    song.getTitle(),
+                    song.getArtistId(),
+                    song.getCoverUrl(),
+                    song.getLyrics(),
+                    new DownloadUtils.DownloadCallback() {
+                        @Override
+                        public void onProgressUpdate(int progress) {
+                            if (Thread.currentThread().isInterrupted()) {
+                                throw new RuntimeException("Download cancelled");
+                            }
+                            requireActivity().runOnUiThread(() -> {
+                                progressBar.setProgress(progress);
+                                tvDownloadPercent.setText(progress + "%");
+                                tvDownloadTitle.setText("Đang tải: " + song.getTitle());
+                            });
+                        }
+
+                        @Override
+                        public void onDownloadComplete(String filePath) {
+                            requireActivity().runOnUiThread(() -> {
+                                hideDownloadProgress();
+                                Toast.makeText(getContext(), "Tải xuống thành công!", Toast.LENGTH_SHORT).show();
+                                isDownloading = false;
+                                // Gửi broadcast thông báo download hoàn tất
+                                Intent intent = new Intent("com.ck.music_app.DOWNLOAD_COMPLETE");
+                                broadcaster.sendBroadcast(intent);
+                            });
+                        }
+
+                        @Override
+                        public void onError(String message) {
+                            requireActivity().runOnUiThread(() -> {
+                                hideDownloadProgress();
+                                System.out.println(message);
+                                Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
+                                isDownloading = false;
+                                // Gửi broadcast thông báo download lỗi
+                                Intent intent = new Intent("com.ck.music_app.DOWNLOAD_ERROR");
+                                broadcaster.sendBroadcast(intent);
+                            });
+                        }
+                    });
+        });
+        downloadThread.start();
     }
 } 

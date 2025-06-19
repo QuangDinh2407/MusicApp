@@ -78,6 +78,9 @@ public class PlayMusicFragment extends Fragment {
 
     private FirebaseService firebaseService;
 
+    private static final String DOWNLOAD_COMPLETE = "com.ck.music_app.DOWNLOAD_COMPLETE";
+    private static final String DOWNLOAD_ERROR = "com.ck.music_app.DOWNLOAD_ERROR";
+
     private final BroadcastReceiver musicReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -109,6 +112,26 @@ public class PlayMusicFragment extends Fragment {
         }
     };
 
+    private final BroadcastReceiver downloadReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent.getAction() != null) {
+                switch (intent.getAction()) {
+                    case DOWNLOAD_COMPLETE:
+                        if (btnDownload != null) {
+                            btnDownload.setSelected(false);
+                        }
+                        break;
+                    case DOWNLOAD_ERROR:
+                        if (btnDownload != null) {
+                            btnDownload.setSelected(false);
+                        }
+                        break;
+                }
+            }
+        }
+    };
+
     public PlayMusicFragment() {
         // Required empty public constructor
     }
@@ -132,6 +155,12 @@ public class PlayMusicFragment extends Fragment {
         loadingDialog = new LoadingDialog(requireContext());
         firebaseService = FirebaseService.getInstance();
         registerReceiver();
+        
+        // Đăng ký receiver cho download
+        IntentFilter downloadFilter = new IntentFilter();
+        downloadFilter.addAction(DOWNLOAD_COMPLETE);
+        downloadFilter.addAction(DOWNLOAD_ERROR);
+        broadcaster.registerReceiver(downloadReceiver, downloadFilter);
     }
 
     @Override
@@ -550,6 +579,7 @@ public class PlayMusicFragment extends Fragment {
     public void onDestroy() {
         super.onDestroy();
         broadcaster.unregisterReceiver(musicReceiver);
+        broadcaster.unregisterReceiver(downloadReceiver);
         Intent intent = new Intent(requireContext(), MusicService.class);
         intent.setAction(MusicService.ACTION_STOP);
         requireContext().startService(intent);

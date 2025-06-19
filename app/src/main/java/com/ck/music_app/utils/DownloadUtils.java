@@ -162,34 +162,83 @@ public class DownloadUtils {
 
                 // 2. Download and save cover image
                 if (coverUrl != null && !coverUrl.startsWith("android.resource")) {
-                    File musicDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC);
-                    File artistDir = new File(musicDir, normalizedArtist);
-                    if (!artistDir.exists()) {
-                        artistDir.mkdirs();
-                    }
-                    // Save album art in the artist directory
-                    File coverFile = new File(artistDir, baseFileName + ".jpg");
-                    try (FileOutputStream fos = new FileOutputStream(coverFile);
-                         InputStream is = new URL(coverUrl).openStream()) {
-                        byte[] buffer = new byte[8192];
-                        int bytesRead;
-                        while ((bytesRead = is.read(buffer)) != -1) {
-                            fos.write(buffer, 0, bytesRead);
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        // For Android 10 and above, use MediaStore.Images with Pictures directory
+                        ContentValues imageValues = new ContentValues();
+                        imageValues.put(MediaStore.Images.Media.DISPLAY_NAME, baseFileName + ".jpg");
+                        imageValues.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
+                        // Save in Pictures/MusicApp/artist_name/
+                        String relativePath = Environment.DIRECTORY_PICTURES + "/MusicApp/" + normalizedArtist;
+                        imageValues.put(MediaStore.Images.Media.RELATIVE_PATH, relativePath);
+                        // Add description to help identify the image
+                        imageValues.put(MediaStore.Images.Media.DESCRIPTION, "Album art for " + title);
+
+                        Uri imageUri = context.getContentResolver().insert(
+                                MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY),
+                                imageValues);
+
+                        if (imageUri != null) {
+                            try (OutputStream os = context.getContentResolver().openOutputStream(imageUri);
+                                 InputStream is = new URL(coverUrl).openStream()) {
+                                byte[] buffer = new byte[8192];
+                                int bytesRead;
+                                while ((bytesRead = is.read(buffer)) != -1) {
+                                    os.write(buffer, 0, bytesRead);
+                                }
+                            }
+                        }
+                    } else {
+                        // For older Android versions
+                        File musicDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC);
+                        File artistDir = new File(musicDir, normalizedArtist);
+                        if (!artistDir.exists()) {
+                            artistDir.mkdirs();
+                        }
+                        // Save album art in the artist directory
+                        File coverFile = new File(artistDir, baseFileName + ".jpg");
+                        try (FileOutputStream fos = new FileOutputStream(coverFile);
+                             InputStream is = new URL(coverUrl).openStream()) {
+                            byte[] buffer = new byte[8192];
+                            int bytesRead;
+                            while ((bytesRead = is.read(buffer)) != -1) {
+                                fos.write(buffer, 0, bytesRead);
+                            }
                         }
                     }
                 }
 
                 // 3. Save lyrics
                 if (lyrics != null && !lyrics.isEmpty()) {
-                    File musicDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC);
-                    File artistDir = new File(musicDir, normalizedArtist);
-                    if (!artistDir.exists()) {
-                        artistDir.mkdirs();
-                    }
-                    // Save lyrics file in the artist directory
-                    File lyricsFile = new File(artistDir, baseFileName + ".txt");
-                    try (BufferedWriter writer = new BufferedWriter(new FileWriter(lyricsFile))) {
-                        writer.write(lyrics);
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        // For Android 10 and above, save lyrics in Download directory
+                        ContentValues textValues = new ContentValues();
+                        textValues.put(MediaStore.Downloads.DISPLAY_NAME, baseFileName + ".txt");
+                        textValues.put(MediaStore.Downloads.MIME_TYPE, "text/plain");
+                        // Save in Download/MusicApp/artist_name/
+                        String relativePath = Environment.DIRECTORY_DOWNLOADS + "/MusicApp/" + normalizedArtist;
+                        textValues.put(MediaStore.Downloads.RELATIVE_PATH, relativePath);
+
+                        Uri textUri = context.getContentResolver().insert(
+                                MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY),
+                                textValues);
+
+                        if (textUri != null) {
+                            try (OutputStream os = context.getContentResolver().openOutputStream(textUri)) {
+                                os.write(lyrics.getBytes());
+                            }
+                        }
+                    } else {
+                        // For older Android versions
+                        File musicDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC);
+                        File artistDir = new File(musicDir, normalizedArtist);
+                        if (!artistDir.exists()) {
+                            artistDir.mkdirs();
+                        }
+                        // Save lyrics file in the artist directory
+                        File lyricsFile = new File(artistDir, baseFileName + ".txt");
+                        try (BufferedWriter writer = new BufferedWriter(new FileWriter(lyricsFile))) {
+                            writer.write(lyrics);
+                        }
                     }
                 }
 

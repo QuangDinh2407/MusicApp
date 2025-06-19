@@ -9,6 +9,7 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -249,59 +250,50 @@ public class DownloadedFragment extends Fragment implements LocalSongAdapter.OnS
                     } else {
                         Log.d("DownloadedFragment", "No embedded art found for: " + title + ", searching for external images...");
                         
-                        // 2. Thử tìm file ảnh trong cùng thư mục với file nhạc
-                        File musicFile = new File(filePath);
-                        File musicDir = musicFile.getParentFile();
-                        String baseName = filePath.substring(0, filePath.lastIndexOf("."));
+                        // 2. Thử tìm file ảnh trong Pictures/MusicApp/artist_name/
+                        File picturesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
+                        File musicAppDir = new File(picturesDir, "MusicApp");
+                        File artistImageDir = new File(musicAppDir, artist);
                         
-                        // Danh sách các định dạng ảnh phổ biến cần tìm
-                        String[] imageExtensions = {".jpg", ".jpeg", ".png", ".webp"};
-                        
-                        // Danh sách các tên file ảnh có thể có
-                        String[] possibleNames = {
-                            baseName,  // Cùng tên với file nhạc
-                            baseName + "_cover",
-                            baseName + "_album",
-                            baseName + "_art",
-                            new File(baseName).getName(), // Chỉ tên file không có path
-                            "cover",
-                            "album",
-                            "folder"
-                        };
-
-                        // Tìm theo tất cả các khả năng
-                        boolean found = false;
-                        for (String name : possibleNames) {
-                            for (String ext : imageExtensions) {
-                                File imageFile = new File(musicDir, name + ext);
-                                if (imageFile.exists()) {
-                                    coverUrl = Uri.fromFile(imageFile).toString();
-                                    Log.d("DownloadedFragment", "Found external image: " + coverUrl);
-                                    found = true;
-                                    break;
+                        if (artistImageDir.exists()) {
+                            // Chuẩn hóa tên file giống như lúc lưu trong DownloadUtils
+                            String baseName = title;
+                            // Log để debug
+                            Log.d("DownloadedFragment", "Looking for image with base name: " + baseName);
+                            Log.d("DownloadedFragment", "In directory: " + artistImageDir.getAbsolutePath());
+                            
+                            // Liệt kê tất cả các file trong thư mục để debug
+                            File[] files = artistImageDir.listFiles();
+                            if (files != null) {
+                                for (File f : files) {
+                                    Log.d("DownloadedFragment", "Found file in directory: " + f.getName());
                                 }
                             }
-                            if (found) break;
-                        }
-                        
-                        if (!found) {
-                            // 3. Thử tìm trong thư mục cha (album/artist folder)
-                            File artistParentDir = musicDir.getParentFile();
-                            if (artistParentDir != null) {
-                                for (String ext : imageExtensions) {
-                                    File imageFile = new File(artistParentDir, "cover" + ext);
+                            
+                            // Tìm file ảnh theo tên bài hát
+                            File imageFile = new File(artistImageDir, baseName + ".jpg");
+                            if (imageFile.exists()) {
+                                coverUrl = Uri.fromFile(imageFile).toString();
+                                Log.d("DownloadedFragment", "Found exact match image in Pictures/MusicApp: " + coverUrl);
+                            } else {
+                                // Nếu không tìm thấy, thử tìm file cover chung
+                                imageFile = new File(artistImageDir, "cover.jpg");
+                                if (imageFile.exists()) {
+                                    coverUrl = Uri.fromFile(imageFile).toString();
+                                    Log.d("DownloadedFragment", "Found cover image in Pictures/MusicApp: " + coverUrl);
+                                } else {
+                                    Log.d("DownloadedFragment", "No image found in Pictures/MusicApp for: " + title);
+                                    // Thử tìm với tên file được chuẩn hóa
+                                    String normalizedName = title.replaceAll("[^a-zA-Z0-9]", "_");
+                                    imageFile = new File(artistImageDir, normalizedName + ".jpg");
                                     if (imageFile.exists()) {
                                         coverUrl = Uri.fromFile(imageFile).toString();
-                                        Log.d("DownloadedFragment", "Found cover in parent dir: " + coverUrl);
-                                        found = true;
-                                        break;
+                                        Log.d("DownloadedFragment", "Found normalized name image in Pictures/MusicApp: " + coverUrl);
                                     }
                                 }
                             }
-                        }
-                        
-                        if (!found) {
-                            Log.d("DownloadedFragment", "No external images found for: " + title);
+                        } else {
+                            Log.d("DownloadedFragment", "Artist image directory does not exist: " + artistImageDir.getAbsolutePath());
                         }
                     }
                     
@@ -357,11 +349,34 @@ public class DownloadedFragment extends Fragment implements LocalSongAdapter.OnS
 
     private String getLyricsFromFile(String audioFilePath) {
         try {
-            // Thử tìm file .lrc cùng tên với file nhạc
+            // Lấy tên bài hát và artist từ đường dẫn
+            File audioFile = new File(audioFilePath);
+            File artistDir = audioFile.getParentFile();
+            String artist = artistDir != null ? artistDir.getName() : "Unknown_Artist";
+            String title = audioFile.getName();
+            title = title.substring(0, title.lastIndexOf("."));
+            
+            // Chuẩn hóa tên file
+            String normalizedTitle = title.replaceAll("[^a-zA-Z0-9]", "_");
+            
+            // Tìm lyrics trong thư mục Download/MusicApp/artist_name/
+            File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+            File musicAppDir = new File(downloadsDir, "MusicApp");
+            File artistLyricsDir = new File(musicAppDir, artist);
+            
+            if (artistLyricsDir.exists()) {
+                File lyricsFile = new File(artistLyricsDir, normalizedTitle + ".txt");
+                
+                if (lyricsFile.exists()) {
+                    Log.d("DownloadedFragment", "Found lyrics in Downloads/MusicApp: " + lyricsFile.getPath());
+                    return readFile(lyricsFile);
+                }
+            }
+            
+            // Nếu không tìm thấy trong Downloads/MusicApp, thử tìm trong thư mục gốc
             String lrcPath = audioFilePath.substring(0, audioFilePath.lastIndexOf(".")) + ".lrc";
             File lrcFile = new File(lrcPath);
             
-            // Thử tìm file .txt cùng tên với file nhạc
             String txtPath = audioFilePath.substring(0, audioFilePath.lastIndexOf(".")) + ".txt";
             File txtFile = new File(txtPath);
 
