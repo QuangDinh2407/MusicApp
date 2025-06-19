@@ -20,8 +20,10 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.ck.music_app.Model.Album;
 import com.ck.music_app.Model.Song;
 import com.ck.music_app.R;
+import com.ck.music_app.Services.FirebaseService;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
+import com.google.firebase.Firebase;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
@@ -328,18 +330,31 @@ public class AlbumContentFragment extends Fragment {
 
     private void showAlbumSongs(Album album) {
         if (!isAdded() || getContext() == null) return;
-        
+        final String[] artistName = new String[1];
+        FirebaseService.getInstance().getArtistNameById(album.getArtistId(), new FirebaseService.FirestoreCallback<String>() {
+            @Override
+            public void onSuccess(String result) {
+                artistName[0] = result;
+            }
+
+            @Override
+            public void onError(Exception e) {
+                artistName[0] = "Unknown Artist";
+            }
+        });
         // Load songs for this album
         FirestoreUtils.getSongsByAlbumId(album.getId(), new FirestoreUtils.FirestoreCallback<List<Song>>() {
             @Override
             public void onSuccess(List<Song> songs) {
                 if (!isAdded() || getContext() == null) return;
-                
-                // Create and show AlbumSongsFragment
+
+
+
                 AlbumSongsFragment albumSongsFragment = AlbumSongsFragment.newInstance(
-                    songs,
-                    album.getTitle(),
-                    album.getCoverUrl()
+                        songs,
+                        album.getTitle(),
+                        album.getCoverUrl(),
+                        artistName[0]
                 );
 
                 // Add callback để xử lý khi fragment bị remove

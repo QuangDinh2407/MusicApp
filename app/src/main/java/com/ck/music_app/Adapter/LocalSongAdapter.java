@@ -41,12 +41,7 @@ public class LocalSongAdapter extends RecyclerView.Adapter<LocalSongAdapter.View
         this.context = context;
         this.songList = songList;
         this.clickListener = listener;
-        System.out.println("=== LocalSongAdapter Constructor ===");
-        System.out.println("SongList size: " + (songList != null ? songList.size() : "null"));
-        if (songList != null && !songList.isEmpty()) {
-            System.out.println("First song: " + songList.get(0).getTitle());
-            System.out.println("Last song: " + songList.get(songList.size() - 1).getTitle());
-        }
+
     }
 
     @NonNull
@@ -58,9 +53,7 @@ public class LocalSongAdapter extends RecyclerView.Adapter<LocalSongAdapter.View
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        System.out.println("onBindViewHolder position: " + position);
         LocalSong song = songList.get(position);
-        System.out.println("Binding song: " + song.getTitle());
 
         holder.tvTitle.setText(song.getTitle());
         holder.tvArtist.setText(song.getArtist());

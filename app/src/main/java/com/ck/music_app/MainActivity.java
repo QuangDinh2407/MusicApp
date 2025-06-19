@@ -182,35 +182,62 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void handlePlayerIntent(Intent intent) {
-        if (intent != null && intent.getBooleanExtra("showPlayer", false)) {
-            ArrayList<Song> songList = (ArrayList<Song>) intent.getSerializableExtra("songList");
-            int position = intent.getIntExtra("position", 0);
-            String albumName = intent.getStringExtra("albumName");
-            boolean resumePlayback = intent.getBooleanExtra("resume_playback", false);
-            int playbackPosition = intent.getIntExtra("playback_position", 0);
-            
-            // Phát nhạc
-            Intent serviceIntent = new Intent(this, MusicService.class);
-            serviceIntent.setAction(MusicService.ACTION_PLAY);
-            serviceIntent.putExtra("songList", songList);
-            serviceIntent.putExtra("position", position);
-            startService(serviceIntent);
+        if (intent != null) {
+            if (intent.getBooleanExtra("showPlayer", false)) {
+                System.out.println(intent);
+                ArrayList<Song> songList = (ArrayList<Song>) intent.getSerializableExtra("songList");
+                int position = intent.getIntExtra("position", 0);
+                String albumName = intent.getStringExtra("albumName");
+                boolean resumePlayback = intent.getBooleanExtra("resume_playback", false);
+                int playbackPosition = intent.getIntExtra("playback_position", 0);
 
-            // Hiển thị player
-            showPlayer(songList, position, albumName, !resumePlayback);
-            
-            if (playbackPosition > 0) {
-                // Seek đến vị trí đang phát
-                new Handler().postDelayed(() -> {
-                    Intent seekIntent = new Intent(this, MusicService.class);
-                    seekIntent.setAction(MusicService.ACTION_SEEK);
-                    seekIntent.putExtra("position", playbackPosition);
-                    startService(seekIntent);
-                }, 500);
+                // Hiển thị player trước để tránh delay UI
+                showPlayer(songList, position, albumName, resumePlayback);
+
+                // Xử lý phát nhạc
+                Intent serviceIntent = new Intent(this, MusicService.class);
+                if (resumePlayback) {
+                    serviceIntent.setAction(MusicService.ACTION_RESUME);
+                } else {
+                    serviceIntent.setAction(MusicService.ACTION_PLAY);
+                    serviceIntent.putExtra("songList", songList);
+                    serviceIntent.putExtra("position", position);
+                }
+                startService(serviceIntent);
+
+                if (playbackPosition > 0) {
+                    // Seek đến vị trí đang phát
+                    new Handler().postDelayed(() -> {
+                        Intent seekIntent = new Intent(this, MusicService.class);
+                        seekIntent.setAction(MusicService.ACTION_SEEK);
+                        seekIntent.putExtra("position", playbackPosition);
+                        startService(seekIntent);
+                    }, 100);
+                }
+
+                // Xóa flag để tránh hiển thị lại player khi activity resume
+                intent.removeExtra("showPlayer");
+                return;
             }
-            
-            // Xóa flag để tránh hiển thị lại player khi activity resume
-            intent.removeExtra("showPlayer");
+
+            if (intent.getBooleanExtra("load_song_from_login", false)) {
+                // Xử lý trường hợp load từ login
+                Song currentSong = (Song) intent.getSerializableExtra("current_song");
+                if (currentSong != null) {
+                    ArrayList<Song> songList = new ArrayList<>();
+                    songList.add(currentSong);
+                    
+                    // Phát nhạc
+                    Intent serviceIntent = new Intent(this, MusicService.class);
+                    serviceIntent.setAction(MusicService.ACTION_PLAY);
+                    serviceIntent.putExtra("songList", songList);
+                    serviceIntent.putExtra("position", 0);
+                    startService(serviceIntent);
+
+                    // Hiển thị player
+                    showPlayer(songList, 0, "Last PLaying", true);
+                }
+            }
         }
     }
 

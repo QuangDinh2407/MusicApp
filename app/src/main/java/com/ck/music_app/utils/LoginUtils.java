@@ -20,22 +20,23 @@ public class LoginUtils {
         if (user != null) {
             // Kiểm tra xem có đang phát nhạc không
             Song currentPlayingSong = MusicService.getCurrentSong();
+
+            
             if (currentPlayingSong != null) {
                 // Nếu đang phát nhạc, chuyển sang MainActivity với thông tin bài hát đang phát
-                Log.d(TAG, "Đang phát nhạc local, giữ nguyên trạng thái phát nhạc");
                 Intent intent = new Intent(context, MainActivity.class);
-                
+
                 // Lấy playlist hiện tại từ MusicService
                 List<Song> currentPlaylist = MusicService.getCurrentPlaylist();
                 if (currentPlaylist == null) {
                     currentPlaylist = new ArrayList<>();
                     currentPlaylist.add(currentPlayingSong);
                 }
-                
+
                 // Lưu trạng thái phát nhạc hiện tại
                 boolean isPlaying = MusicService.isPlaying();
                 int currentPosition = MusicService.getCurrentPosition();
-                
+
                 // Truyền thông tin bài hát và playlist
                 intent.putExtra("current_song", currentPlayingSong);
                 intent.putExtra("songList", new ArrayList<>(currentPlaylist));
@@ -44,12 +45,13 @@ public class LoginUtils {
                 intent.putExtra("load_song_from_login", true);
                 intent.putExtra("resume_playback", isPlaying);
                 intent.putExtra("playback_position", currentPosition);
-                
+                System.out.println("1");
                 context.startActivity(intent);
                 if (!(context instanceof MainActivity)) {
                     ((android.app.Activity) context).finish();
                 }
             } else {
+                System.out.println("2");
                 // Nếu không phát nhạc, load bài hát từ dữ liệu
                 checkUserCurrentSong(context, user);
             }
