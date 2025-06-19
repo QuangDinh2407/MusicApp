@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -28,6 +29,7 @@ import com.ck.music_app.MainFragment.LibraryChildFragment.ArtistContentFragment;
 import com.ck.music_app.MainFragment.LibraryChildFragment.PlaylistContentFragment;
 import com.ck.music_app.Model.Album;
 import com.ck.music_app.R;
+import com.ck.music_app.Services.FirebaseService;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.imageview.ShapeableImageView;
@@ -255,8 +257,11 @@ public class LibraryFragment extends Fragment {
                     Toast.makeText(requireContext(), "Sắp xếp theo nghe gần đây", Toast.LENGTH_SHORT).show();
                     return true;
                 } else if (itemId == R.id.sort_name) {
-                    // TODO: Sort by name
-                    Toast.makeText(requireContext(), "Sắp xếp theo tên", Toast.LENGTH_SHORT).show();
+                    // Gọi phương thức sắp xếp từ ArtistContentFragment
+                    if (artistFragment != null && artistFragment.isAdded()) {
+                        artistFragment.sortArtistsByName();
+                        Toast.makeText(requireContext(), "Đã sắp xếp theo tên", Toast.LENGTH_SHORT).show();
+                    }
                     return true;
                 } else if (itemId == R.id.sort_most_played) {
                     // TODO: Sort by most played
@@ -340,7 +345,20 @@ public class LibraryFragment extends Fragment {
                                 View selectedBackground = convertView.findViewById(R.id.selectedBackground);
 
                                 tvAlbumTitle.setText(album.getTitle());
-                                tvArtistName.setText(album.getArtistId());
+                                // Lấy tên artist từ artistId
+                                FirebaseService.getInstance().getArtistNameById(album.getArtistId(), new FirebaseService.FirestoreCallback<String>() {
+                                    @Override
+                                    public void onSuccess(String artistName) {
+                                        tvArtistName.setText(artistName);
+                                    }
+
+                                    @Override
+                                    public void onError(Exception e) {
+                                        // Nếu không lấy được tên artist, hiển thị "Unknown Artist"
+                                        tvArtistName.setText("Unknown Artist");
+                                        Log.e("PlaylistDetail", "Error getting artist name: " + e.getMessage());
+                                    }
+                                });
 
                                 // Load ảnh album
                                 Glide.with(LibraryFragment.this)

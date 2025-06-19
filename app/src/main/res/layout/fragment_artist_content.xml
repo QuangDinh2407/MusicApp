@@ -142,4 +142,11 @@
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 
+    <!-- Container for Artist Detail Fragment -->
+    <FrameLayout
+        android:id="@+id/artistDetailContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone"/>
+
 </androidx.coordinatorlayout.widget.CoordinatorLayout> 

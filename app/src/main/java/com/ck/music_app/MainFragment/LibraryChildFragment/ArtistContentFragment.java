@@ -282,7 +282,35 @@ public class ArtistContentFragment extends Fragment implements ArtistAdapter.OnA
     @Override
     public void onArtistClick(Artist artist) {
         if (!isAdded() || getContext() == null) return;
-        //
+
+        ArtistDetailFragment artistDetailFragment = ArtistDetailFragment.newInstance(artist);
+
+        // Add callback để xử lý khi fragment bị remove
+        artistDetailFragment.setOnFragmentDismissListener(() -> {
+            // Hiển thị lại RecyclerView và ẩn container khi fragment bị đóng
+            rvFollowedArtists.setVisibility(View.VISIBLE);
+            View container = requireView().findViewById(R.id.artistDetailContainer);
+            container.setVisibility(View.GONE);
+        });
+
+        // Ẩn RecyclerView và hiển thị container
+        rvFollowedArtists.setVisibility(View.GONE);
+        View container = requireView().findViewById(R.id.artistDetailContainer);
+        container.setVisibility(View.VISIBLE);
+
+        // Thực hiện transaction để thêm fragment mới
+        if (getChildFragmentManager() != null) {
+            getChildFragmentManager().beginTransaction()
+                .setCustomAnimations(
+                    R.anim.slide_in_right,
+                    R.anim.slide_out_right,
+                    R.anim.slide_in_right,
+                    R.anim.slide_out_right
+                )
+                .replace(R.id.artistDetailContainer, artistDetailFragment)
+                .addToBackStack(null)
+                .commit();
+        }
     }
 
     @Override
@@ -367,6 +395,19 @@ public class ArtistContentFragment extends Fragment implements ArtistAdapter.OnA
                         }
                     });
         }
+    }
+
+    public void sortArtistsByName() {
+        List<Artist> artistsToSort = chipAll.isChecked() ? allArtists : followedArtists;
+        
+        // Sắp xếp danh sách theo tên
+        artistsToSort.sort((a1, a2) -> a1.getName().compareToIgnoreCase(a2.getName()));
+        
+        // Cập nhật danh sách đã lọc
+        filteredArtists = new ArrayList<>(artistsToSort);
+        
+        // Cập nhật UI
+        updateArtistsList(filteredArtists);
     }
 
     @Override
