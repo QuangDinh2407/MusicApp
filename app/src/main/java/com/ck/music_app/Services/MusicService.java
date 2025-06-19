@@ -229,7 +229,8 @@ public class MusicService extends Service {
                                     // Validate position
                                     if (newPosition < 0 || newPosition >= newSongList.size()) {
                                         Log.e(TAG,
-                                                "Invalid position: " + newPosition + ", list size: " + newSongList.size());
+                                                "Invalid position: " + newPosition + ", list size: "
+                                                        + newSongList.size());
                                         break;
                                     }
 
@@ -391,6 +392,7 @@ public class MusicService extends Service {
                 isPlaying = false;
                 stopLyricUpdates();
                 broadcastPlayingState(false);
+                showNotification(); // Cập nhật notification để đổi nút
             } catch (IllegalStateException e) {
                 e.printStackTrace();
             }
@@ -477,49 +479,48 @@ public class MusicService extends Service {
         }
     }
 
-    private void handleShuffleMode(boolean shuffleOn){
-            if (shuffleOn != isShuffleOn) {
-                isShuffleOn = shuffleOn;
-                if (isShuffleOn) {
+    private void handleShuffleMode(boolean shuffleOn) {
+        if (shuffleOn != isShuffleOn) {
+            isShuffleOn = shuffleOn;
+            if (isShuffleOn) {
+                // Lấy bài hát hiện tại
+                Song currentSong = songList.get(currentIndex);
+
+                // Tạo danh sách shuffle mới
+                songList = new ArrayList<>();
+                songList.add(currentSong); // Đặt bài hát hiện tại lên đầu
+
+                // Shuffle phần còn lại của danh sách
+                List<Song> remainingSongs = new ArrayList<>(originalSongList);
+                remainingSongs.remove(originalSongList.indexOf(currentSong));
+                Collections.shuffle(remainingSongs);
+                songList.addAll(remainingSongs);
+
+                currentIndex = 0; // Vì bài hát hiện tại luôn ở vị trí đầu
+            } else {
+                // Khôi phục lại danh sách gốc
+                if (!originalSongList.isEmpty()) {
                     // Lấy bài hát hiện tại
                     Song currentSong = songList.get(currentIndex);
-
-                    // Tạo danh sách shuffle mới
-                    songList = new ArrayList<>();
-                    songList.add(currentSong); // Đặt bài hát hiện tại lên đầu
-
-                    // Shuffle phần còn lại của danh sách
-                    List<Song> remainingSongs = new ArrayList<>(originalSongList);
-                    remainingSongs.remove(originalSongList.indexOf(currentSong));
-                    Collections.shuffle(remainingSongs);
-                    songList.addAll(remainingSongs);
-
-                    currentIndex = 0; // Vì bài hát hiện tại luôn ở vị trí đầu
-                } else {
-                    // Khôi phục lại danh sách gốc
-                    if (!originalSongList.isEmpty()) {
-                        // Lấy bài hát hiện tại
-                        Song currentSong = songList.get(currentIndex);
-                        // Tìm vị trí của bài hát trong danh sách gốc
-                        int originalIndex = -1;
-                        for (int i = 0; i < originalSongList.size(); i++) {
-                            if (originalSongList.get(i).getSongId().equals(currentSong.getSongId())) {
-                                originalIndex = i;
-                                break;
-                            }
+                    // Tìm vị trí của bài hát trong danh sách gốc
+                    int originalIndex = -1;
+                    for (int i = 0; i < originalSongList.size(); i++) {
+                        if (originalSongList.get(i).getSongId().equals(currentSong.getSongId())) {
+                            originalIndex = i;
+                            break;
                         }
-                        // Nếu không tìm thấy, giữ nguyên vị trí hiện tại
-                        if (originalIndex == -1) {
-                            originalIndex = Math.min(currentIndex, originalSongList.size() - 1);
-                        }
-                        songList = new ArrayList<>(originalSongList);
-                        currentIndex = originalIndex;
                     }
+                    // Nếu không tìm thấy, giữ nguyên vị trí hiện tại
+                    if (originalIndex == -1) {
+                        originalIndex = Math.min(currentIndex, originalSongList.size() - 1);
+                    }
+                    songList = new ArrayList<>(originalSongList);
+                    currentIndex = originalIndex;
                 }
-                broadcastPlaylistChanged();
             }
+            broadcastPlaylistChanged();
         }
-
+    }
 
     private void handleRepeatMode(int newRepeatMode) {
         if (newRepeatMode >= 0 && newRepeatMode <= 2) {
@@ -528,28 +529,28 @@ public class MusicService extends Service {
     }
 
     private void startProgressUpdates() {
-            // Cập nhật progress bar mỗi giây
-            new Thread(() -> {
-                while (true) {
-                    try {
-                        if (mediaPlayer == null || !isPlaying) {
-                            break;
-                        }
-
-                        if (mediaPlayer.isPlaying()) {
-                            broadcastProgress(mediaPlayer.getCurrentPosition(), mediaPlayer.getDuration());
-                        }
-
-                        Thread.sleep(1000);
-                    } catch (Exception e) {
-                        Log.e(TAG, "Error in progress updates: " + e.getMessage());
+        // Cập nhật progress bar mỗi giây
+        new Thread(() -> {
+            while (true) {
+                try {
+                    if (mediaPlayer == null || !isPlaying) {
                         break;
                     }
+
+                    if (mediaPlayer.isPlaying()) {
+                        broadcastProgress(mediaPlayer.getCurrentPosition(), mediaPlayer.getDuration());
+                    }
+
+                    Thread.sleep(1000);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error in progress updates: " + e.getMessage());
+                    break;
                 }
-            }).start();
-            // Cập nhật vị trí lyrics mỗi 100ms
-            startLyricUpdates();
-        }
+            }
+        }).start();
+        // Cập nhật vị trí lyrics mỗi 100ms
+        startLyricUpdates();
+    }
 
     private final Runnable lyricUpdateRunnable = new Runnable() {
         @Override
@@ -589,9 +590,14 @@ public class MusicService extends Service {
     }
 
     private void broadcastProgress(int progress, int duration) {
-        // Update stored progress values
+        // Store old value for logging
+        int oldProgress = currentProgress;
+
+        // Check if seconds have changed before updating stored values
         boolean shouldUpdateNotification = (currentProgress / 1000) != (progress / 1000); // Only update when seconds
                                                                                           // change
+
+        // Update stored progress values AFTER checking
         currentProgress = progress;
         currentDuration = duration;
 
@@ -600,11 +606,8 @@ public class MusicService extends Service {
         intent.putExtra("duration", duration);
         broadcaster.sendBroadcast(intent);
 
-        // Update notification with current progress for real-time display
-        // Force update every 2 seconds for visible progress
-        if (shouldUpdateNotification && currentProgress % 2000 < 1000) {
-            android.util.Log.d("MusicService",
-                    "Updating notification - Progress: " + currentProgress + "/" + currentDuration);
+        // Update notification only when seconds change
+        if (shouldUpdateNotification) {
             showNotification();
         }
     }
@@ -695,35 +698,11 @@ public class MusicService extends Service {
                 this, 5, muteIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
-        // Build notification with MediaStyle and progress
-        String progressText = formatTime(currentProgress) + " / " + formatTime(currentDuration);
-        String statusText = "🎵 Music Player - " + (isPlaying ? "Playing" : "Paused") + (isMuted ? " • Muted" : "");
-
-        // Calculate progress percentage and create visual progress bar
-        int progressPercent = 0;
-        String visualProgressBar = "";
-        if (currentDuration > 0) {
-            progressPercent = (int) ((currentProgress * 100L) / currentDuration);
-            // Create visual progress bar with Unicode blocks
-            int filledBlocks = progressPercent / 5; // 20 blocks total (100/5)
-            StringBuilder progressBar = new StringBuilder();
-            for (int i = 0; i < 20; i++) {
-                if (i < filledBlocks) {
-                    progressBar.append("█");
-                } else {
-                    progressBar.append("░");
-                }
-            }
-            visualProgressBar = progressBar.toString();
-        } else {
-            visualProgressBar = "░░░░░░░░░░░░░░░░░░░░";
-        }
-
+        // Build notification with MediaStyle
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
                 .setSmallIcon(R.mipmap.ic_launcher_new)
                 .setContentTitle(currentSong.getTitle())
                 .setContentText(currentSong.getArtistId())
-                .setSubText(progressText + " " + visualProgressBar + " " + progressPercent + "%")
                 .setContentIntent(pendingIntent)
                 .setDeleteIntent(stopPendingIntent)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -799,8 +778,6 @@ public class MusicService extends Service {
             Notification notification = createNotification();
             if (notification != null) {
                 notificationManager.notify(NOTIFICATION_ID, notification);
-                android.util.Log.d("MusicService", "Notification updated with progress: " +
-                        (currentDuration > 0 ? (currentProgress * 100 / currentDuration) : 0) + "%");
             }
         } catch (Exception e) {
             android.util.Log.e("MusicService", "Error updating notification", e);
@@ -827,9 +804,10 @@ public class MusicService extends Service {
         return currentIndex;
     }
 
-    public  boolean isShuffleEnabled() {
+    public boolean isShuffleEnabled() {
         return isShuffleOn;
-        }
+    }
+
     public static boolean isServicePlaying() {
         // This should be called from a service instance, but we'll provide a static
         // method

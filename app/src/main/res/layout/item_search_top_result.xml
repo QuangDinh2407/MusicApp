@@ -57,7 +57,7 @@
                 android:text="SONG"
                 android:textSize="12sp"
                 android:textStyle="bold"
-                android:textColor="@color/flatOrange"
+                android:textColor="@color/textTertiary"
                 android:background="@drawable/bg_yellow_round"
                 android:paddingHorizontal="8dp"
                 android:paddingVertical="2dp"
