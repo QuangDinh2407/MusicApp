@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="8dp"
+    app:cardCornerRadius="8dp"
+    app:cardElevation="2dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="12dp"
+        android:gravity="center_vertical">
+
+        <ImageView
+            android:id="@+id/imgTopResultCover"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:scaleType="centerCrop"
+            android:background="@drawable/round_bottom_artist_header"/>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="12dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tvTopResultTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Tên bài hát/nghệ sĩ"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="@color/textPrimary"
+                android:maxLines="1"
+                android:ellipsize="end"/>
+
+            <TextView
+                android:id="@+id/tvTopResultSubtitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Nghệ sĩ/Loại"
+                android:textSize="14sp"
+                android:textColor="@color/textSecondary"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:layout_marginTop="4dp"/>
+
+            <TextView
+                android:id="@+id/tvTopResultType"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="SONG"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="@color/textTertiary"
+                android:background="@drawable/bg_yellow_round"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="2dp"
+                android:layout_marginTop="4dp"/>
+
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/imgTopResultPlay"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_play_white_36dp"
+            android:background="@drawable/bg_circle_orange"
+            android:padding="8dp"/>
+
+    </LinearLayout>
+
+</androidx.cardview.widget.CardView> 

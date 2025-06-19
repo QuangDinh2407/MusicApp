@@ -9,6 +9,11 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
+
 
     <application
         android:allowBackup="true"
@@ -49,7 +54,8 @@
         <service
             android:name=".Services.MusicService"
             android:enabled="true"
-            android:exported="false" />
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
 
         <service android:name=".Services.InternetService"
             android:enabled="true"
@@ -60,6 +66,7 @@
             android:exported="false"
             android:label="Chi tiết Playlist"
             android:parentActivityName=".MainActivity" />
+           
     </application>
 
 </manifest>

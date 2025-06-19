@@ -1,5 +1,6 @@
 package com.ck.music_app.MainFragment;
 
+import android.Manifest;
 import android.animation.Animator;
 import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
@@ -8,13 +9,19 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.drawable.Drawable;
+import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.animation.LinearInterpolator;
+import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
@@ -24,6 +31,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.viewpager2.widget.ViewPager2;
@@ -39,11 +47,8 @@ import com.ck.music_app.R;
 import com.ck.music_app.Services.FirebaseService;
 import com.ck.music_app.Services.MusicService;
 import com.ck.music_app.Viewpager.MusicPlayerPagerAdapter;
-import com.ck.music_app.utils.GradientUtils;
 import com.ck.music_app.utils.DownloadUtils;
-
-import android.graphics.Bitmap;
-import android.graphics.drawable.Drawable;
+import com.ck.music_app.utils.GradientUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -161,7 +166,8 @@ public class MusicPlayerFragment extends Fragment {
 
     @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
+            @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_music_player, container, false);
         initViews(view);
         setupViewTreeObserver();
@@ -170,10 +176,15 @@ public class MusicPlayerFragment extends Fragment {
         // Set album name
         tvAlbumName.setText(albumName);
 
-        fragments = new Fragment[]{
+        fragments = new Fragment[] {
                 PlayMusicFragment.newInstance(currentIndex),
                 new LyricFragment()
         };
+
+        // **THÊM: Lưu reference đến PlayMusicFragment để dễ dàng truy cập**
+        if (fragments[0] instanceof PlayMusicFragment) {
+            playMusicFragment = (PlayMusicFragment) fragments[0];
+        }
 
         viewPager = view.findViewById(R.id.view_pager);
         MusicPlayerPagerAdapter adapter = new MusicPlayerPagerAdapter(this, fragments);
@@ -187,7 +198,7 @@ public class MusicPlayerFragment extends Fragment {
         });
 
         // Lấy bài hát hiện tại từ service để cập nhật UI
-        Song currentSong = MusicService.getCurrentSong();
+        Song currentSong = MusicService.getCurrentSongStatic();
         if (currentSong != null) {
             updateMiniPlayer(currentSong);
         }
@@ -234,13 +245,8 @@ public class MusicPlayerFragment extends Fragment {
     }
 
     private void initListeners() {
-        btnMiniPlayPause.setOnClickListener(v -> {
-            Intent intent = new Intent(requireContext(), MusicService.class);
-            intent.setAction(isPlaying ? MusicService.ACTION_PAUSE : MusicService.ACTION_PLAY);
-            requireContext().startService(intent);
-        });
-        miniPlayerLayout.setOnClickListener(v -> maximize());
         btnMiniPlayPause.setOnClickListener(v -> togglePlayPause());
+        miniPlayerLayout.setOnClickListener(v -> maximize());
         btnMiniPrevious.setOnClickListener(v -> playPrevious());
         btnMiniNext.setOnClickListener(v -> playNext());
         btnBack.setOnClickListener(v -> minimize());
@@ -258,7 +264,7 @@ public class MusicPlayerFragment extends Fragment {
         Intent intent = new Intent(requireContext(), MusicService.class);
         intent.setAction(MusicService.ACTION_PREVIOUS);
         requireContext().startService(intent);
-                    }
+    }
 
     private void playNext() {
         Intent intent = new Intent(requireContext(), MusicService.class);
@@ -273,7 +279,8 @@ public class MusicPlayerFragment extends Fragment {
     }
 
     public void minimize() {
-        if (isMinimized) return;
+        if (isMinimized)
+            return;
         isMinimized = true;
 
         int screenHeight = requireActivity().getWindow().getDecorView().getHeight();
@@ -298,14 +305,16 @@ public class MusicPlayerFragment extends Fragment {
         });
 
         AnimatorSet animatorSet = new AnimatorSet();
-        ObjectAnimator translateY = ObjectAnimator.ofFloat(fullPlayerLayout, "translationY", 0f, miniPlayerY - originalY);
+        ObjectAnimator translateY = ObjectAnimator.ofFloat(fullPlayerLayout, "translationY", 0f,
+                miniPlayerY - originalY);
         ObjectAnimator fullPlayerAlpha = ObjectAnimator.ofFloat(fullPlayerLayout, "alpha", 1f, 0f);
         ObjectAnimator miniPlayerAlpha = ObjectAnimator.ofFloat(miniPlayerLayout, "alpha", 0f, 1f);
 
-        animatorSet.playTogether(translateY, fullPlayerAlpha, miniPlayerAlpha, rootHeightAnimator, playerHeightAnimator);
+        animatorSet.playTogether(translateY, fullPlayerAlpha, miniPlayerAlpha, rootHeightAnimator,
+                playerHeightAnimator);
         animatorSet.setDuration(150);
         animatorSet.setInterpolator(new AccelerateDecelerateInterpolator());
-        
+
         animatorSet.addListener(new Animator.AnimatorListener() {
             @Override
             public void onAnimationStart(Animator animation) {
@@ -320,17 +329,20 @@ public class MusicPlayerFragment extends Fragment {
             }
 
             @Override
-            public void onAnimationCancel(Animator animation) {}
+            public void onAnimationCancel(Animator animation) {
+            }
 
             @Override
-            public void onAnimationRepeat(Animator animation) {}
+            public void onAnimationRepeat(Animator animation) {
+            }
         });
 
         animatorSet.start();
     }
 
     public void maximize() {
-        if (!isMinimized) return;
+        if (!isMinimized)
+            return;
         isMinimized = false;
 
         int screenHeight = requireActivity().getWindow().getDecorView().getHeight();
@@ -353,14 +365,16 @@ public class MusicPlayerFragment extends Fragment {
         });
 
         AnimatorSet animatorSet = new AnimatorSet();
-        ObjectAnimator translateY = ObjectAnimator.ofFloat(fullPlayerLayout, "translationY", miniPlayerY - originalY, 0f);
+        ObjectAnimator translateY = ObjectAnimator.ofFloat(fullPlayerLayout, "translationY", miniPlayerY - originalY,
+                0f);
         ObjectAnimator fullPlayerAlpha = ObjectAnimator.ofFloat(fullPlayerLayout, "alpha", 0f, 1f);
         ObjectAnimator miniPlayerAlpha = ObjectAnimator.ofFloat(miniPlayerLayout, "alpha", 1f, 0f);
 
-        animatorSet.playTogether(translateY, fullPlayerAlpha, miniPlayerAlpha, rootHeightAnimator, playerHeightAnimator);
+        animatorSet.playTogether(translateY, fullPlayerAlpha, miniPlayerAlpha, rootHeightAnimator,
+                playerHeightAnimator);
         animatorSet.setDuration(150);
         animatorSet.setInterpolator(new AccelerateDecelerateInterpolator());
-        
+
         animatorSet.addListener(new Animator.AnimatorListener() {
             @Override
             public void onAnimationStart(Animator animation) {
@@ -374,10 +388,12 @@ public class MusicPlayerFragment extends Fragment {
             }
 
             @Override
-            public void onAnimationCancel(Animator animation) {}
+            public void onAnimationCancel(Animator animation) {
+            }
 
             @Override
-            public void onAnimationRepeat(Animator animation) {}
+            public void onAnimationRepeat(Animator animation) {
+            }
         });
 
         animatorSet.start();
@@ -403,29 +419,38 @@ public class MusicPlayerFragment extends Fragment {
             tvMiniArtist.setText("Unknown Artist");
         }
 
-        Glide.with(this)
-                .load(song.getCoverUrl())
-                .placeholder(R.mipmap.ic_launcher)
-                .circleCrop()
-                .into(imgMiniCover);
+        if (imgMiniCover != null && getContext() != null) {
+            Glide.with(this)
+                    .load(song.getCoverUrl())
+                    .placeholder(R.mipmap.ic_launcher)
+                    .circleCrop()
+                    .into(imgMiniCover);
+        }
 
-        Glide.with(this)
-                .asBitmap()
-                .load(song.getCoverUrl())
-                .into(new CustomTarget<Bitmap>() {
-                    @Override
-                    public void onResourceReady(Bitmap resource, Transition<? super Bitmap> transition) {
-                        GradientUtils.createGradientFromBitmap(resource, miniGradientOverlay);
-                        GradientUtils.createGradientFromBitmap(resource, gradientOverlay);
-                    }
+        if (getContext() != null) {
+            Glide.with(this)
+                    .asBitmap()
+                    .load(song.getCoverUrl())
+                    .into(new CustomTarget<Bitmap>() {
+                        @Override
+                        public void onResourceReady(Bitmap resource, Transition<? super Bitmap> transition) {
+                            if (miniGradientOverlay != null) {
+                                GradientUtils.createGradientFromBitmap(resource, miniGradientOverlay);
+                            }
+                            if (gradientOverlay != null) {
+                                GradientUtils.createGradientFromBitmap(resource, gradientOverlay);
+                            }
+                        }
 
-                    @Override
-                    public void onLoadCleared(Drawable placeholder) {}
-                });
+                        @Override
+                        public void onLoadCleared(Drawable placeholder) {
+                        }
+                    });
+        }
     }
 
     private void updateCurrentSong() {
-        Song currentSong = MusicService.getCurrentSong();
+        Song currentSong = MusicService.getCurrentSongStatic();
         if (currentSong != null) {
             updateMiniPlayer(currentSong);
         }
@@ -434,13 +459,23 @@ public class MusicPlayerFragment extends Fragment {
     private void updatePlayingState(boolean playing) {
         isPlaying = playing;
         int icon = playing ? R.drawable.ic_pause_white_36dp : R.drawable.ic_play_white_36dp;
-        btnMiniPlayPause.setImageResource(icon);
-        
+
+        // Thêm null check để tránh crash
+        if (btnMiniPlayPause != null) {
+            btnMiniPlayPause.setImageResource(icon);
+        }
+
         if (playing) {
-            startVinylRotation(imgMiniVinyl);
-            startCoverRotation(imgMiniCover);
+            if (imgMiniVinyl != null) {
+                startVinylRotation(imgMiniVinyl);
+            }
+            if (imgMiniCover != null) {
+                startCoverRotation(imgMiniCover);
+            }
         } else {
-            stopVinylRotation(imgMiniVinyl);
+            if (imgMiniVinyl != null) {
+                stopVinylRotation(imgMiniVinyl);
+            }
             stopCoverRotation();
         }
     }
@@ -454,7 +489,8 @@ public class MusicPlayerFragment extends Fragment {
                     .setDuration(8000)
                     .setInterpolator(new LinearInterpolator())
                     .withEndAction(() -> {
-                        if (isVinylRotating) startVinylRotation(vinyl);
+                        if (isVinylRotating)
+                            startVinylRotation(vinyl);
                     })
                     .start();
         }
@@ -477,7 +513,8 @@ public class MusicPlayerFragment extends Fragment {
                     .setDuration(8000)
                     .setInterpolator(new LinearInterpolator())
                     .withEndAction(() -> {
-                        if (isCoverRotating) startCoverRotation(cover);
+                        if (isCoverRotating)
+                            startCoverRotation(cover);
                     })
                     .start();
         }
@@ -485,8 +522,11 @@ public class MusicPlayerFragment extends Fragment {
 
     private void stopCoverRotation() {
         isCoverRotating = false;
-        imgMiniCover.animate().cancel();
-        currentRotating = imgMiniCover.getRotation();
+        // Thêm null check để tránh crash
+        if (imgMiniCover != null) {
+            imgMiniCover.animate().cancel();
+            currentRotating = imgMiniCover.getRotation();
+        }
     }
 
     private void registerReceiver() {
@@ -501,9 +541,47 @@ public class MusicPlayerFragment extends Fragment {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        broadcaster.unregisterReceiver(musicReceiver);
-        stopVinylRotation(imgMiniVinyl);
-        stopCoverRotation();
+
+        // Safely unregister receiver
+        try {
+            if (broadcaster != null && musicReceiver != null) {
+                broadcaster.unregisterReceiver(musicReceiver);
+            }
+        } catch (Exception e) {
+            // Receiver might not be registered, ignore
+        }
+
+        // Stop animations safely
+        try {
+            stopVinylRotation(imgMiniVinyl);
+            stopCoverRotation();
+        } catch (Exception e) {
+            // Ignore animation errors
+        }
+
+        // Cancel any ongoing downloads
+        if (isDownloading && downloadThread != null) {
+            try {
+                downloadThread.interrupt();
+                isDownloading = false;
+            } catch (Exception e) {
+                // Ignore
+            }
+        }
+
+        // Dismiss loading dialog safely
+        try {
+            if (loadingDialog != null && loadingDialog.isShowing()) {
+                loadingDialog.dismiss();
+            }
+        } catch (Exception e) {
+            // Ignore
+        }
+
+        // Clear references
+        songList = null;
+        fragments = null;
+        viewPager = null;
     }
 
     public List<Song> getSongList() {
@@ -541,44 +619,52 @@ public class MusicPlayerFragment extends Fragment {
 
         // Thêm view tiến trình vào container
         FrameLayout downloadContainer = view.findViewById(R.id.downloadContainer);
-        downloadContainer.addView(downloadProgressView);
-        downloadProgressView.setVisibility(View.GONE);
+        if (downloadContainer != null) {
+            downloadContainer.addView(downloadProgressView);
+            downloadProgressView.setVisibility(View.GONE);
 
-        // Thêm animation cho view download
-        downloadProgressView.setTranslationY(200);
-        downloadProgressView.setAlpha(0f);
+            // Thêm animation cho view download
+            downloadProgressView.setTranslationY(200);
+            downloadProgressView.setAlpha(0f);
+        }
 
         btnCancelDownload.setOnClickListener(v -> cancelDownload());
     }
 
     public void handleDownload(Song song) {
         if (isDownloading) {
-            Toast.makeText(getContext(), "Đang tải xuống...", Toast.LENGTH_SHORT).show();
+            if (getContext() != null) {
+                Toast.makeText(getContext(), "Đang tải xuống...", Toast.LENGTH_SHORT).show();
+            }
             return;
         }
 
         if (song == null || song.getAudioUrl() == null) {
-            Toast.makeText(getContext(), "Không có bài hát nào đang phát", Toast.LENGTH_SHORT).show();
+            if (getContext() != null) {
+                Toast.makeText(getContext(), "Không có bài hát nào đang phát", Toast.LENGTH_SHORT).show();
+            }
             return;
         }
 
         // Kiểm tra nếu URL bắt đầu bằng "content://" thì là bài hát local
         if (song.getAudioUrl().startsWith("content://")) {
-            Toast.makeText(getContext(), "Bài hát đã được tải về thiết bị", Toast.LENGTH_SHORT).show();
+            if (getContext() != null) {
+                Toast.makeText(getContext(), "Bài hát đã được tải về thiết bị", Toast.LENGTH_SHORT).show();
+            }
             return;
         }
 
         // Kiểm tra quyền truy cập bộ nhớ
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(requireContext(), 
+            if (ContextCompat.checkSelfPermission(requireContext(),
                     Manifest.permission.READ_MEDIA_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[]{Manifest.permission.READ_MEDIA_AUDIO}, 1001);
+                requestPermissions(new String[] { Manifest.permission.READ_MEDIA_AUDIO }, 1001);
                 return;
             }
         } else {
-            if (ContextCompat.checkSelfPermission(requireContext(), 
+            if (ContextCompat.checkSelfPermission(requireContext(),
                     Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1001);
+                requestPermissions(new String[] { Manifest.permission.WRITE_EXTERNAL_STORAGE }, 1001);
                 return;
             }
         }
@@ -589,44 +675,43 @@ public class MusicPlayerFragment extends Fragment {
 
         downloadThread = new Thread(() -> {
             DownloadUtils.downloadSong(
-                requireContext(),
-                song.getAudioUrl(),
-                song.getTitle(),
-                song.getArtistId(),
-                song.getCoverUrl(),
-                song.getLyrics(),
-                new DownloadUtils.DownloadCallback() {
-                    @Override
-                    public void onProgressUpdate(int progress) {
-                        if (Thread.currentThread().isInterrupted()) {
-                            throw new RuntimeException("Download cancelled");
+                    requireContext(),
+                    song.getAudioUrl(),
+                    song.getTitle(),
+                    song.getArtistId(),
+                    song.getCoverUrl(),
+                    song.getLyrics(),
+                    new DownloadUtils.DownloadCallback() {
+                        @Override
+                        public void onProgressUpdate(int progress) {
+                            if (Thread.currentThread().isInterrupted()) {
+                                throw new RuntimeException("Download cancelled");
+                            }
+                            requireActivity().runOnUiThread(() -> {
+                                progressBar.setProgress(progress);
+                                tvDownloadPercent.setText(progress + "%");
+                                tvDownloadTitle.setText("Đang tải: " + song.getTitle());
+                            });
                         }
-                        requireActivity().runOnUiThread(() -> {
-                            progressBar.setProgress(progress);
-                            tvDownloadPercent.setText(progress + "%");
-                            tvDownloadTitle.setText("Đang tải: " + song.getTitle());
-                        });
-                    }
 
-                    @Override
-                    public void onDownloadComplete(String filePath) {
-                        requireActivity().runOnUiThread(() -> {
-                            hideDownloadProgress();
-                            Toast.makeText(getContext(), "Tải xuống thành công!", Toast.LENGTH_SHORT).show();
-                            isDownloading = false;
-                        });
-                    }
+                        @Override
+                        public void onDownloadComplete(String filePath) {
+                            requireActivity().runOnUiThread(() -> {
+                                hideDownloadProgress();
+                                Toast.makeText(getContext(), "Tải xuống thành công!", Toast.LENGTH_SHORT).show();
+                                isDownloading = false;
+                            });
+                        }
 
-                    @Override
-                    public void onError(String message) {
-                        requireActivity().runOnUiThread(() -> {
-                            hideDownloadProgress();
-                            Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
-                            isDownloading = false;
-                        });
-                    }
-                }
-            );
+                        @Override
+                        public void onError(String message) {
+                            requireActivity().runOnUiThread(() -> {
+                                hideDownloadProgress();
+                                Toast.makeText(getContext(), message, Toast.LENGTH_SHORT).show();
+                                isDownloading = false;
+                            });
+                        }
+                    });
         });
         downloadThread.start();
     }
@@ -655,7 +740,9 @@ public class MusicPlayerFragment extends Fragment {
         }
         hideDownloadProgress();
         isDownloading = false;
-        Toast.makeText(getContext(), "Đã hủy tải xuống", Toast.LENGTH_SHORT).show();
+        if (getContext() != null) {
+            Toast.makeText(getContext(), "Đã hủy tải xuống", Toast.LENGTH_SHORT).show();
+        }
     }
 
     @Override
@@ -686,7 +773,7 @@ public class MusicPlayerFragment extends Fragment {
         songList = new ArrayList<>(newSongList);
         currentIndex = newIndex;
         // Cập nhật UI cho bài hát hiện tại nếu cần
-        Song currentSong = MusicService.getCurrentSong();
+        Song currentSong = MusicService.getCurrentSongStatic();
         if (currentSong != null) {
             updateMiniPlayer(currentSong);
         }

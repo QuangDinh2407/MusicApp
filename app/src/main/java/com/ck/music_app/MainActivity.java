@@ -17,6 +17,8 @@ import com.ck.music_app.MainFragment.HomeFragment;
 import com.ck.music_app.MainFragment.LibraryFragment;
 import com.ck.music_app.MainFragment.ProfileFragment;
 import com.ck.music_app.MainFragment.SearchFragment;
+import com.ck.music_app.MainFragment.HomeChildFragment.AlbumSongsFragment;
+import com.ck.music_app.MainFragment.HomeChildFragment.PlaylistSongsFragment;
 import com.ck.music_app.Model.Song;
 import com.ck.music_app.Services.MusicService;
 import com.ck.music_app.Viewpager.MainPagerAdapter;
@@ -98,7 +100,7 @@ public class MainActivity extends AppCompatActivity {
         isOfflineMode = getIntent().getBooleanExtra("openDownloadFragment", false);
 
         // Khởi tạo các fragment chính
-        fragments = new Fragment[]{
+        fragments = new Fragment[] {
                 new HomeFragment(),
                 new SearchFragment(),
                 new LibraryFragment(),
@@ -300,10 +302,39 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        if (musicplayerFragment != null && playerContainer.getVisibility() == View.VISIBLE) {
+        // Check if there are fragments in back stack
+        if (getSupportFragmentManager().getBackStackEntryCount() > 0) {
+            // Show ViewPager and bottom navigation again
+            viewPager.setVisibility(View.VISIBLE);
+            bottomNavigationView.setVisibility(View.VISIBLE);
+            getSupportFragmentManager().popBackStack();
+        } else if (musicplayerFragment != null && playerContainer.getVisibility() == View.VISIBLE) {
             musicplayerFragment.minimize();
         } else {
             super.onBackPressed();
+        }
+    }
+
+
+    public void navigateToFragment(Fragment fragment, String backStackName) {
+        try {
+            // Hide the ViewPager and show fragment in fragment_container
+            viewPager.setVisibility(View.GONE);
+            bottomNavigationView.setVisibility(View.GONE);
+
+            getSupportFragmentManager().beginTransaction()
+                    .setCustomAnimations(
+                            R.anim.slide_in_left,
+                            R.anim.slide_out_left,
+                            R.anim.slide_in_right,
+                            R.anim.slide_out_right)
+                    .replace(R.id.fragment_container, fragment)
+                    .addToBackStack(backStackName)
+                    .commit();
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error navigating to fragment: " + e.getMessage());
+            Toast.makeText(this, "Lỗi khi mở trang: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
 

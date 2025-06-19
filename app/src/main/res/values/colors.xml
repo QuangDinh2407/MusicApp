@@ -92,6 +92,8 @@
     <color name="statusBarColorLight">#FFFFFF</color>
     <color name="statusBarColorDark">#000000</color>
 
+    
+    <color name="primary">#FF6200EE</color>
 
     <color name="background_item">#000000</color>
 
@@ -100,6 +102,7 @@
     <color name="textPrimarySameBackground">#FFFFFF</color>
 
     <color name="textSecondary">#666666</color>
+    <color name="textTertiary">#999999</color>
 
     <color name="purple_200">#FFBB86FC</color>
     <color name="purple_500">#FF6200EE</color>

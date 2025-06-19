@@ -19,7 +19,7 @@ public class LoginUtils {
     public static void handleLoginSuccess(Context context, FirebaseUser user, String email) {
         if (user != null) {
             // Kiểm tra xem có đang phát nhạc không
-            Song currentPlayingSong = MusicService.getCurrentSong();
+            Song currentPlayingSong = MusicService.getCurrentSongStatic();
 
             
             if (currentPlayingSong != null) {

@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -100,10 +101,9 @@ public class PlayMusicFragment extends Fragment {
                     break;
                 case MusicService.BROADCAST_PLAYLIST_CHANGED:
                     updatePlaylistState(
-                        (List<Song>) intent.getSerializableExtra("songList"),
-                        intent.getIntExtra("currentIndex", 0),
-                        intent.getBooleanExtra("isShuffleOn", false)
-                    );
+                            (List<Song>) intent.getSerializableExtra("songList"),
+                            intent.getIntExtra("currentIndex", 0),
+                            intent.getBooleanExtra("isShuffleOn", false));
                     break;
             }
         }
@@ -113,6 +113,7 @@ public class PlayMusicFragment extends Fragment {
         // Required empty public constructor
     }
 
+    // sửa lại theo hàm này
     public static PlayMusicFragment newInstance(int currentIndex) {
         PlayMusicFragment fragment = new PlayMusicFragment();
         Bundle args = new Bundle();
@@ -134,17 +135,49 @@ public class PlayMusicFragment extends Fragment {
     }
 
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
+            @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_play_music, container, false);
         initViews(view);
         initListeners();
-        
-        // Lấy thông tin bài hát hiện tại từ Service
-        Song currentSong = MusicService.getCurrentSong();
-        if (currentSong != null) {
-            updateUI(currentSong);
+
+        // **SỬA: Lấy thông tin bài hát từ parent fragment trước**
+        try {
+            Fragment parentFragment = getParentFragment();
+            if (parentFragment instanceof MusicPlayerFragment) {
+                MusicPlayerFragment musicPlayerFragment = (MusicPlayerFragment) parentFragment;
+                List<Song> parentSongList = musicPlayerFragment.getSongList();
+                int parentCurrentIndex = musicPlayerFragment.getCurrentIndex();
+
+                if (parentSongList != null && !parentSongList.isEmpty() &&
+                        parentCurrentIndex >= 0 && parentCurrentIndex < parentSongList.size()) {
+                    // Cập nhật từ parent fragment
+                    this.songList = new ArrayList<>(parentSongList);
+                    this.currentIndex = parentCurrentIndex;
+                    Song currentSong = parentSongList.get(parentCurrentIndex);
+                    updateUI(currentSong);
+                    Log.d("PlayMusicFragment", "Updated UI from parent fragment: " + currentSong.getTitle());
+                    return view;
+                }
+            }
+        } catch (Exception e) {
+            Log.e("PlayMusicFragment", "Error getting data from parent fragment: " + e.getMessage());
         }
-        
+
+        // **FALLBACK: Lấy thông tin bài hát hiện tại từ Service nếu không có từ
+        // parent**
+        try {
+            Song currentSong = MusicService.getCurrentSongStatic();
+            if (currentSong != null) {
+                updateUI(currentSong);
+                Log.d("PlayMusicFragment", "Updated UI from MusicService: " + currentSong.getTitle());
+            } else {
+                Log.w("PlayMusicFragment", "No current song available from service or parent");
+            }
+        } catch (Exception e) {
+            Log.e("PlayMusicFragment", "Error getting current song from service: " + e.getMessage());
+        }
+
         return view;
     }
 
@@ -206,66 +239,119 @@ public class PlayMusicFragment extends Fragment {
     }
 
     private void startVinylRotation() {
+        if (!isAdded() || getContext() == null || imgVinyl == null)
+            return;
+
         isVinylRotating = true;
-        if (imgVinyl != null) {
+        try {
             imgVinyl.setRotation(currentRotating);
             imgVinyl.animate()
                     .rotationBy(360f + currentRotating)
                     .setDuration(8000)
                     .setInterpolator(new LinearInterpolator())
                     .withEndAction(() -> {
-                        if (isVinylRotating) {
+                        if (isVinylRotating && isAdded() && getContext() != null) {
                             startVinylRotation();
                         }
                     })
                     .start();
+        } catch (Exception e) {
+            Log.e("PlayMusicFragment", "Error starting vinyl rotation: " + e.getMessage());
         }
     }
 
     private void stopVinylRotation() {
         isVinylRotating = false;
-        if (imgVinyl != null) {
-            imgVinyl.animate().cancel();
-            currentRotating = imgVinyl.getRotation();
+        try {
+            if (imgVinyl != null && isAdded() && getContext() != null) {
+                imgVinyl.animate().cancel();
+                currentRotating = imgVinyl.getRotation();
+            }
+        } catch (Exception e) {
+            Log.e("PlayMusicFragment", "Error stopping vinyl rotation: " + e.getMessage());
         }
     }
 
     private void startCoverRotation() {
+        if (!isAdded() || getContext() == null || imgCover == null)
+            return;
+
         isCoverRotating = true;
-        if (imgCover != null) {
+        try {
             imgCover.setRotation(currentRotating);
             imgCover.animate()
                     .rotationBy(360f + currentRotating)
                     .setDuration(8000)
                     .setInterpolator(new LinearInterpolator())
                     .withEndAction(() -> {
-                        if (isCoverRotating) {
+                        if (isCoverRotating && isAdded() && getContext() != null) {
                             startCoverRotation();
                         }
                     })
                     .start();
+        } catch (Exception e) {
+            Log.e("PlayMusicFragment", "Error starting cover rotation: " + e.getMessage());
         }
     }
 
     private void stopCoverRotation() {
         isCoverRotating = false;
-        if (imgCover != null) {
-            imgCover.animate().cancel();
-            currentRotating = imgCover.getRotation();
+        try {
+            if (imgCover != null && isAdded() && getContext() != null) {
+                imgCover.animate().cancel();
+                currentRotating = imgCover.getRotation();
+            }
+        } catch (Exception e) {
+            Log.e("PlayMusicFragment", "Error stopping cover rotation: " + e.getMessage());
         }
     }
 
     private void loadSong(int index) {
-        List<Song> currentPlaylist = MusicService.getCurrentPlaylist();
-        if (currentPlaylist != null && !currentPlaylist.isEmpty() && index >= 0 && index < currentPlaylist.size()) {
-            Song song = currentPlaylist.get(index);
+        try {
+            // Thêm bounds checking để tránh IndexOutOfBoundsException
+            if (songList == null || songList.isEmpty() || index < 0 || index >= songList.size()) {
+                Log.w("PlayMusicFragment", "Invalid song list or index in loadSong");
+                return;
+            }
+
+            Song song = songList.get(index);
+            if (song == null) {
+                Log.w("PlayMusicFragment", "Song is null at index: " + index);
+                return;
+            }
+
+            // Cập nhật UI với bài hát mới
             updateUI(song);
 
-            // Gửi yêu cầu phát nhạc đến Service
-            Intent intent = new Intent(requireContext(), MusicService.class);
-            intent.setAction(MusicService.ACTION_PLAY);
-            intent.putExtra("position", index);
-            requireContext().startService(intent);
+            // Reset rotation state
+            if (isVinylRotating) {
+                stopVinylRotation();
+                stopCoverRotation();
+            }
+            currentRotating = 0f;
+            if (imgVinyl != null) {
+                imgVinyl.setRotation(0f);
+            }
+            if (imgCover != null) {
+                imgCover.setRotation(0f);
+            }
+
+            // Start playing the song through service
+            try {
+                if (getContext() != null) {
+                    Intent intent = new Intent(getContext(), MusicService.class);
+                    intent.setAction(MusicService.ACTION_PLAY);
+                    intent.putExtra("songList", new ArrayList<>(songList));
+                    intent.putExtra("position", index);
+                    getContext().startService(intent);
+                    Log.d("PlayMusicFragment", "Started service for song: " + song.getTitle());
+                }
+            } catch (Exception e) {
+                Log.e("PlayMusicFragment", "Error starting music service: " + e.getMessage());
+            }
+
+        } catch (Exception e) {
+            Log.e("PlayMusicFragment", "Error in loadSong: " + e.getMessage(), e);
         }
     }
 
@@ -281,7 +367,7 @@ public class PlayMusicFragment extends Fragment {
         isPlaying = playing;
         int icon = playing ? R.drawable.ic_pause_white_36dp : R.drawable.ic_play_white_36dp;
         btnPlayPause.setImageResource(icon);
-        
+
         if (playing) {
             startVinylRotation();
             startCoverRotation();
@@ -297,10 +383,10 @@ public class PlayMusicFragment extends Fragment {
         if (currentPlaylist != null && position < currentPlaylist.size()) {
             Song song = currentPlaylist.get(position);
             updateUI(song);
-            
+
             // Broadcast song info update
             Intent intent = new Intent("UPDATE_SONG_INFO");
-            
+
             String coverUrl = song.getCoverUrl();
             if (coverUrl != null && !coverUrl.isEmpty()) {
                 intent.putExtra("COVER_URL", coverUrl);
@@ -308,14 +394,14 @@ public class PlayMusicFragment extends Fragment {
                 String defaultCover = "android.resource://" + requireContext().getPackageName() + "/mipmap/ic_launcher_new";
                 intent.putExtra("COVER_URL", defaultCover);
             }
-            
+
             String lyrics = song.getLyrics();
             if (lyrics != null && !lyrics.isEmpty()) {
                 intent.putExtra("LYRIC", lyrics);
             } else {
                 intent.putExtra("LYRIC", "Chưa có lời bài hát");
             }
-            
+
             LocalBroadcastManager.getInstance(requireContext()).sendBroadcast(intent);
         }
     }
@@ -432,20 +518,10 @@ public class PlayMusicFragment extends Fragment {
         }
     }
 
-    private void handleAddToPlaylist() {
-        // Lấy thông tin bài hát hiện tại
-        Song currentSong = MusicService.getCurrentSong();
-        if (currentSong == null) {
-            Toast.makeText(getContext(), "Không có bài hát nào đang phát", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        showAddToPlaylistDialog();
-    }
 
     private void handleDownload() {
         // Lấy thông tin bài hát hiện tại
-        Song currentSong = MusicService.getCurrentSong();
+        Song currentSong = MusicService.getCurrentSongStatic();
         if (currentSong == null) {
             Toast.makeText(getContext(), "Không có bài hát nào đang phát", Toast.LENGTH_SHORT).show();
             return;
@@ -461,7 +537,7 @@ public class PlayMusicFragment extends Fragment {
 
     private void showAddToPlaylistDialog() {
         // Get current song
-        Song currentSong = MusicService.getCurrentSong();
+        Song currentSong = MusicService.getCurrentSongStatic();
         if (currentSong == null) {
             Toast.makeText(getContext(), "Không có bài hát nào đang phát", Toast.LENGTH_SHORT).show();
             return;
@@ -484,5 +560,24 @@ public class PlayMusicFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+
+        // Cancel any ongoing animations
+        try {
+            if (imgVinyl != null) {
+                imgVinyl.animate().cancel();
+            }
+            if (imgCover != null) {
+                imgCover.animate().cancel();
+            }
+        } catch (Exception e) {
+            // Ignore
+        }
+
+        // Clear view references
+        imgVinyl = null;
+        imgCover = null;
+        btnPlayPause = null;
+        seekBar = null;
     }
+
 }

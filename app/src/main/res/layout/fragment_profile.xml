@@ -1,10 +1,10 @@
-<?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@android:color/white">
 
-    <!-- Main Profile Layout -->
+    <!-- Container for the main profile layout -->
     <RelativeLayout
         android:id="@+id/profile_main_layout"
         android:layout_width="match_parent"
@@ -139,6 +139,8 @@
             </LinearLayout>
         </LinearLayout>
 
+        <!-- Thanh điều hướng dưới cùng: giữ nguyên trong activity_main.xml -->
+
     </RelativeLayout>
 
     <!-- Container for child fragments -->
@@ -146,6 +148,6 @@
         android:id="@+id/profile_fragment_container"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:visibility="gone"/>
+        android:visibility="gone" />
 
-</FrameLayout>
+</RelativeLayout>

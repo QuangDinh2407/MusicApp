@@ -17,12 +17,12 @@ public class LoadingDialog {
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
         dialog.setContentView(R.layout.dialog_loading);
         dialog.setCancelable(false);
-        
+
         Window window = dialog.getWindow();
         if (window != null) {
             window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-            window.setLayout(WindowManager.LayoutParams.WRAP_CONTENT, 
-                           WindowManager.LayoutParams.WRAP_CONTENT);
+            window.setLayout(WindowManager.LayoutParams.WRAP_CONTENT,
+                    WindowManager.LayoutParams.WRAP_CONTENT);
         }
     }
 
@@ -37,4 +37,8 @@ public class LoadingDialog {
             dialog.dismiss();
         }
     }
-} 
+
+    public boolean isShowing() {
+        return dialog != null && dialog.isShowing();
+    }
+}
