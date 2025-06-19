@@ -70,6 +70,7 @@ public class MusicService extends Service {
     private static List<Song> songList = new ArrayList<>();
     private static int currentIndex = 0;
     private boolean isPlaying = false;
+    private boolean isLoading = false;
     private LocalBroadcastManager broadcaster;
     private Handler lyricHandler;
     private static final int LYRIC_UPDATE_INTERVAL = 100; // 100ms
@@ -106,32 +107,23 @@ public class MusicService extends Service {
         initializeMediaPlayer();
         lyricHandler = new Handler(Looper.getMainLooper());
 
-        mediaPlayer.setOnCompletionListener(mp -> {
-            // Auto play next song when current song completes
-            if (currentIndex < songList.size() - 1) {
-                playNext();
-            } else {
-                stopSelf();
-            }
-        });
     }
 
     private void initializeMediaPlayer() {
         if (mediaPlayer == null) {
             mediaPlayer = new MediaPlayer();
-            mediaPlayer.setOnCompletionListener(mp -> {
-                // Auto play next song when current song completes
-                if (currentIndex < songList.size() - 1) {
-                    playNext();
-                } else {
-                    stopSelf();
-                }
-            });
-
             mediaPlayer.setOnErrorListener((mp, what, extra) -> {
                 Log.e(TAG, "MediaPlayer error: " + what + ", " + extra);
+                isLoading = false;
                 broadcastLoadingState(false);
                 return false;
+            });
+            
+            // Thêm OnCompletionListener để tự động phát bài tiếp theo khi bài hát kết thúc
+            mediaPlayer.setOnCompletionListener(mp -> {
+                if (!isLoading && mediaPlayer.getCurrentPosition() > 1000) {
+                    playNext();
+                }
             });
         }
     }
@@ -263,6 +255,7 @@ public class MusicService extends Service {
             Song song = songList.get(index);
             currentSong = song;
             currentIndex = index;
+            isLoading = true;
             broadcastLoadingState(true);
             broadcastSongChanged(currentIndex);
 
@@ -284,11 +277,12 @@ public class MusicService extends Service {
                 }
 
                 mediaPlayer.prepareAsync();
-
+                
                 mediaPlayer.setOnPreparedListener(mp -> {
                     try {
                         mediaPlayer.start();
                         isPlaying = true;
+                        isLoading = false;
                         // Initialize progress values
                         currentProgress = 0;
                         currentDuration = mediaPlayer.getDuration();
@@ -310,11 +304,13 @@ public class MusicService extends Service {
                 });
             } catch (Exception e) {
                 Log.e(TAG, "Error setting data source: " + e.getMessage());
+                isLoading = false;
                 broadcastLoadingState(false);
                 Toast.makeText(this, "Không thể phát bài hát này", Toast.LENGTH_SHORT).show();
             }
         } catch (Exception e) {
             Log.e(TAG, "Error in playSong: " + e.getMessage());
+            isLoading = false;
             broadcastLoadingState(false);
         }
     }
@@ -439,44 +435,44 @@ public class MusicService extends Service {
     }
 
     private void handleShuffleMode() {
-            if (isShuffleOn) {
+        if (isShuffleOn) {
+            // Lấy bài hát hiện tại
+            System.out.println("hahaha");
+            Song currentSong = songList.get(currentIndex);
+
+            // Tạo danh sách shuffle mới
+            songList = new ArrayList<>();
+            songList.add(currentSong); // Đặt bài hát hiện tại lên đầu
+
+            // Shuffle phần còn lại của danh sách
+            List<Song> remainingSongs = new ArrayList<>(originalSongList);
+            remainingSongs.remove(originalSongList.indexOf(currentSong));
+            Collections.shuffle(remainingSongs);
+            songList.addAll(remainingSongs);
+
+            currentIndex = 0; // Vì bài hát hiện tại luôn ở vị trí đầu
+        } else {
+            // Khôi phục lại danh sách gốc
+            if (!originalSongList.isEmpty()) {
                 // Lấy bài hát hiện tại
-                System.out.println("hahaha");
                 Song currentSong = songList.get(currentIndex);
-
-                // Tạo danh sách shuffle mới
-                songList = new ArrayList<>();
-                songList.add(currentSong); // Đặt bài hát hiện tại lên đầu
-
-                // Shuffle phần còn lại của danh sách
-                List<Song> remainingSongs = new ArrayList<>(originalSongList);
-                remainingSongs.remove(originalSongList.indexOf(currentSong));
-                Collections.shuffle(remainingSongs);
-                songList.addAll(remainingSongs);
-
-                currentIndex = 0; // Vì bài hát hiện tại luôn ở vị trí đầu
-            } else {
-                // Khôi phục lại danh sách gốc
-                if (!originalSongList.isEmpty()) {
-                    // Lấy bài hát hiện tại
-                    Song currentSong = songList.get(currentIndex);
-                    // Tìm vị trí của bài hát trong danh sách gốc
-                    int originalIndex = -1;
-                    for (int i = 0; i < originalSongList.size(); i++) {
-                        if (originalSongList.get(i).getSongId().equals(currentSong.getSongId())) {
-                            originalIndex = i;
-                            break;
-                        }
+                // Tìm vị trí của bài hát trong danh sách gốc
+                int originalIndex = -1;
+                for (int i = 0; i < originalSongList.size(); i++) {
+                    if (originalSongList.get(i).getSongId().equals(currentSong.getSongId())) {
+                        originalIndex = i;
+                        break;
                     }
-                    // Nếu không tìm thấy, giữ nguyên vị trí hiện tại
-                    if (originalIndex == -1) {
-                        originalIndex = Math.min(currentIndex, originalSongList.size() - 1);
-                    }
-                    songList = new ArrayList<>(originalSongList);
-                    currentIndex = originalIndex;
                 }
+                // Nếu không tìm thấy, giữ nguyên vị trí hiện tại
+                if (originalIndex == -1) {
+                    originalIndex = Math.min(currentIndex, originalSongList.size() - 1);
+                }
+                songList = new ArrayList<>(originalSongList);
+                currentIndex = originalIndex;
             }
-            broadcastPlaylistChanged();
+        }
+        broadcastPlaylistChanged();
     }
 
     private void handleRepeatMode(int newRepeatMode) {
@@ -552,7 +548,7 @@ public class MusicService extends Service {
 
         // Check if seconds have changed before updating stored values
         boolean shouldUpdateNotification = (currentProgress / 1000) != (progress / 1000); // Only update when seconds
-                                                                                          // change
+        // change
 
         // Update stored progress values AFTER checking
         currentProgress = progress;

@@ -189,19 +189,19 @@ public class DownloadUtils {
                         }
                     } else {
                         // For older Android versions
-                        File musicDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC);
-                        File artistDir = new File(musicDir, normalizedArtist);
-                        if (!artistDir.exists()) {
-                            artistDir.mkdirs();
-                        }
-                        // Save album art in the artist directory
-                        File coverFile = new File(artistDir, baseFileName + ".jpg");
-                        try (FileOutputStream fos = new FileOutputStream(coverFile);
-                             InputStream is = new URL(coverUrl).openStream()) {
-                            byte[] buffer = new byte[8192];
-                            int bytesRead;
-                            while ((bytesRead = is.read(buffer)) != -1) {
-                                fos.write(buffer, 0, bytesRead);
+                    File musicDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC);
+                    File artistDir = new File(musicDir, normalizedArtist);
+                    if (!artistDir.exists()) {
+                        artistDir.mkdirs();
+                    }
+                    // Save album art in the artist directory
+                    File coverFile = new File(artistDir, baseFileName + ".jpg");
+                    try (FileOutputStream fos = new FileOutputStream(coverFile);
+                         InputStream is = new URL(coverUrl).openStream()) {
+                        byte[] buffer = new byte[8192];
+                        int bytesRead;
+                        while ((bytesRead = is.read(buffer)) != -1) {
+                            fos.write(buffer, 0, bytesRead);
                             }
                         }
                     }
@@ -229,15 +229,15 @@ public class DownloadUtils {
                         }
                     } else {
                         // For older Android versions
-                        File musicDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC);
-                        File artistDir = new File(musicDir, normalizedArtist);
-                        if (!artistDir.exists()) {
-                            artistDir.mkdirs();
-                        }
-                        // Save lyrics file in the artist directory
-                        File lyricsFile = new File(artistDir, baseFileName + ".txt");
-                        try (BufferedWriter writer = new BufferedWriter(new FileWriter(lyricsFile))) {
-                            writer.write(lyrics);
+                    File musicDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC);
+                    File artistDir = new File(musicDir, normalizedArtist);
+                    if (!artistDir.exists()) {
+                        artistDir.mkdirs();
+                    }
+                    // Save lyrics file in the artist directory
+                    File lyricsFile = new File(artistDir, baseFileName + ".txt");
+                    try (BufferedWriter writer = new BufferedWriter(new FileWriter(lyricsFile))) {
+                        writer.write(lyrics);
                         }
                     }
                 }

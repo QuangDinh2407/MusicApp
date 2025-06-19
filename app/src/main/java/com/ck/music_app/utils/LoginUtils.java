@@ -21,11 +21,10 @@ public class LoginUtils {
             // Kiểm tra xem có đang phát nhạc không
             Song currentPlayingSong = MusicService.getCurrentSongStatic();
 
+            Intent intent = new Intent(context, MainActivity.class);
             
             if (currentPlayingSong != null) {
                 // Nếu đang phát nhạc, chuyển sang MainActivity với thông tin bài hát đang phát
-                Intent intent = new Intent(context, MainActivity.class);
-
                 // Lấy playlist hiện tại từ MusicService
                 List<Song> currentPlaylist = MusicService.getCurrentPlaylist();
                 if (currentPlaylist == null) {
@@ -42,18 +41,23 @@ public class LoginUtils {
                 intent.putExtra("songList", new ArrayList<>(currentPlaylist));
                 intent.putExtra("position", MusicService.getCurrentIndex());
                 intent.putExtra("showPlayer", true);
-                intent.putExtra("load_song_from_login", true);
+                intent.putExtra("load_song_from_login", false);
                 intent.putExtra("resume_playback", isPlaying);
                 intent.putExtra("playback_position", currentPosition);
+                
+                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                
                 System.out.println("1");
-                context.startActivity(intent);
-                if (!(context instanceof MainActivity)) {
-                    ((android.app.Activity) context).finish();
-                }
             } else {
                 System.out.println("2");
                 // Nếu không phát nhạc, load bài hát từ dữ liệu
                 checkUserCurrentSong(context, user);
+                return;
+            }
+            
+            context.startActivity(intent);
+            if (!(context instanceof MainActivity)) {
+                ((android.app.Activity) context).finish();
             }
         } else {
             Intent intent = new Intent(context, MainActivity.class);
